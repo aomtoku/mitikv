@@ -17,7 +17,7 @@ RTL_SRC := utils_pkg.sv                        \
            ../rtl/eth_top.v
 
 #WFLAGS = -Wall -Wno-PINCONNECTEMPTY -Wno-UNUSED -Wno-UNDRIVEN --report-unoptflat
-WFLAGS = -Wall -Wno-PINCONNECTEMPTY -Wno-UNUSED -Wno-UNDRIVEN
+WFLAGS = -Wall -Wno-PINCONNECTEMPTY -Wno-UNUSED -Wno-UNDRIVEN -Wno-SYNCASYNCNET
 
 all: sim
 

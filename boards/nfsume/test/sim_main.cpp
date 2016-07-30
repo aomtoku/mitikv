@@ -2,7 +2,7 @@
 #include <verilated_vcd_c.h>
 #include "Vtestbench.h"
 #include "Vtestbench_testbench.h"
-#include "obj_dir/Vtestbench_eth_top__C1f_If.h"
+//#include "obj_dir/Vtestbench_eth_top__C1f_If.h"
 #include "Vtestbench_axi_10g_ethernet_0.h"
 
 #include <stdbool.h>
@@ -48,6 +48,7 @@ static inline void time_wait(Vtestbench *sim, VerilatedVcdC *tfp, uint32_t n)
 	tfp->dump(t);
 }
 
+#ifdef zero
 void pr_tdata(Vtestbench *sim)
 {
 	uint8_t *p;
@@ -69,6 +70,7 @@ void pr_tlast(Vtestbench *sim)
 		printf("\n");
 	}
 }
+#endif
 
 /*
  * main
@@ -93,10 +95,12 @@ int main(int argc, char **argv)
 	while (!Verilated::gotFinish()) {
 		if ((t % SFP_CLK) == 0) {
 			sim->SFP_CLK_P = !sim->SFP_CLK_P;
+#ifdef zero
 			if (sim->SFP_CLK_P) {
 				pr_tdata(sim);
 				pr_tlast(sim);
 			}
+#endif
 		}
 
 		if (t > SFP_CLK * 0x1f * 2)
