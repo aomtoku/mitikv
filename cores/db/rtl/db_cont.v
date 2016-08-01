@@ -32,6 +32,12 @@ module db_cont #(
 	input  wire                  dram_rd_valid
 );
 
+localparam SET_REQ = 1'b1,
+           GET_REQ = 1'b0;
+localparam IDLE_STATE    = 2'b00,
+           SUSPECT_STATE = 2'b01,
+           ARREST_STATE  = 2'b10,
+           EXPIRE_STATE  = 2'b11;
 /*
  * Free Running Counter
  *
@@ -84,7 +90,7 @@ reg                judge;
 reg [KEY_SIZE-1:0] KEY [RAM_SIZE-1:0];
 reg [VAL_SIZE-1:0] VAL [RAM_SIZE-1:0];
 
-wire [1:0] fetched_flag = fetched_val[22:21];
+wire [1:0] fetched_flag = fetched_val[26:25];
 
 always @ (posedge clk)
 	if (rst) begin
@@ -119,43 +125,38 @@ always @ (posedge clk)
 			CHECK : if (fetched_val[15:0] > sys_cnt[15:0]) begin
 				// Okay?
 				judge <= 0;
-				if (in_op[0] == 1)
+				if (in_op[0] == SET_REQ)
 					state <= UPDATE;
 				else
 					state <= IDLE;
 			end else begin
-				if (in_op[0] == 1) begin
+				if (in_op[0] == SET_REQ) begin
 					state <= UPDATE;
 					case (in_op[2:1])
-						2'b00: state <= IDLE;
-						2'b01: begin
+						IDLE_STATE   : state <= IDLE;
+						SUSPECT_STATE: begin
 							if (fetched_flag[1] == 0)
 								state <= UPDATE;
 							else
 								state <= IDLE;
 						end
-						2'b10: begin
-							if (fetched_flag == 2'b01)
-								state <= UPDATE;
-							else
-								state <= IDLE;
-						end
-						2'b11: state <= IDLE;
+						ARREST_STATE: state <= UPDATE;
+						EXPIRE_STATE: state <= IDLE;
 					endcase
 				end else begin // GET request
 					state     <= IDLE;
 					judge     <= 1;
 				end
 				out_valid <= 1;
-				out_flag  <= fetched_val[23:20];
+				out_flag  <= fetched_val[27:24];
 			end
-			MISS  : if (in_op[0] == 1)
+			MISS  : if (in_op[0] == SET_REQ)
 				state <= UPDATE;
 			else // in_op == GET
 				state <= IDLE;
 			UPDATE: begin
 				KEY[hash] <= in_key;
-				VAL[hash] <= {in_op, 4'd0, sys_cnt[15:0], 8'd0};
+				VAL[hash] <= {4'd0, in_op, 8'd0, sys_cnt[15:0]};
 				state <= IDLE;
 			end
 			default : state <= IDLE;

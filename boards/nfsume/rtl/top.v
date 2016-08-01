@@ -101,7 +101,12 @@ eth_top eth0_top (
 	.ETH0_TX_DISABLE    (ETH0_TX_DISABLE) 
 );
 
-db_top u_db_top (
+db_top #(
+	.KEY_SIZE(96),
+	.VAL_SIZE(32),
+	.RAM_SIZE(4),
+	.RAM_ADDR(2)
+) u_db_top (
 	.clk              (db_clk),
 	.rst              (sys_rst), 
 	/* Network Interface */

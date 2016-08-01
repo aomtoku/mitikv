@@ -1,6 +1,8 @@
 module db_top #(
 	parameter KEY_SIZE = 96,
-	parameter VAL_SIZE = 32
+	parameter VAL_SIZE = 32,
+	parameter RAM_SIZE = 1024,
+	parameter RAM_ADDR = 22
 )(
 	input  wire                clk,
 	input  wire                rst, 
@@ -56,12 +58,12 @@ crc32 u_hashf (
 
 db_cont #(
 	.HASH_SIZE    (32),
-	.KEY_SIZE     (96), // 80bit + 32bit
-	.VAL_SIZE     (32),
+	.KEY_SIZE     (KEY_SIZE), 
+	.VAL_SIZE     (VAL_SIZE),
 	.FLAG_SIZE    ( 4),
-	.RAM_ADDR     (22),
+	.RAM_ADDR     (RAM_ADDR),
 	.RAM_DWIDTH   (32),
-	.RAM_SIZE     (1024)
+	.RAM_SIZE     (RAM_SIZE)
 ) u_db_cont (
 	/* System Interface */
 	.clk          (clk),
