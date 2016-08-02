@@ -288,6 +288,7 @@ always @ (posedge clk156) begin
 					              s_axis_tdata[31:24],
 					              s_axis_tdata[39:32],
 					              s_axis_tdata[47:40]};
+								  //s_axis_tdata[55:48]};
 					rx_dst_ip[31:16] <= {s_axis_tdata[55:48],
 					                     s_axis_tdata[63:56]};
 				end
@@ -441,16 +442,18 @@ axis_data_fifo_0 u_axis_data_fifo (
 
 ila_0 inst_ila (
 	.clk     (clk156), // input wire clk
-	.probe0  ({
-		in_key[71:0]    , //96
-		rx_ip_proto,
-		rx_icmp_type,
-		rx_icmp_code,
-		in_valid  , //1
-		rx_cnt    , // 10
-		filter_block, // 1
-		suspect_mode,// 1
-		db_op // 4
+	.probe0  ({ // 256pin
+		126'd0          ,
+		in_key[95:0]    ,//96
+		rx_ip_proto     ,// 8
+		rx_icmp_type    ,// 4
+		rx_icmp_code    ,// 4
+		in_valid        ,// 1
+		rx_cnt          ,//10
+		filter_block    ,// 1
+		suspect_mode    ,// 1
+		filter_mode     ,// 1
+		db_op            // 4
 	}) // input wire [75:0] probe0
 );
 

@@ -5,9 +5,9 @@ module eth_top #(
 	parameter KEY_SIZE                   = 96,
 	parameter VAL_SIZE                   = 32
 )(
-	input  wire clk100,
-	input  wire sys_rst,
-	output wire [7:0] debug,
+	input  wire                clk100,
+	input  wire                sys_rst,
+	output wire [7:0]          debug,
 
 	output wire                db_clk,
 	output wire [KEY_SIZE-1:0] in_key,
@@ -16,24 +16,24 @@ module eth_top #(
 	input  wire                out_valid,
 	input  wire [3:0]          out_flag,
 
-	input  wire SFP_CLK_P,
-	input  wire SFP_CLK_N,
-	output wire SFP_REC_CLK_P,
-	output wire SFP_REC_CLK_N,
+	input  wire                SFP_CLK_P,
+	input  wire                SFP_CLK_N,
+	output wire                SFP_REC_CLK_P,
+	output wire                SFP_REC_CLK_N,
 
-	input  wire ETH0_TX_P,
-	input  wire ETH0_TX_N,
-	output wire ETH0_RX_P,
-	output wire ETH0_RX_N,
+	input  wire                ETH0_TX_P,
+	input  wire                ETH0_TX_N,
+	output wire                ETH0_RX_P,
+	output wire                ETH0_RX_N,
 
-	inout  wire I2C_FPGA_SCL,
-	inout  wire I2C_FPGA_SDA,
+	inout  wire                I2C_FPGA_SCL,
+	inout  wire                I2C_FPGA_SDA,
 
-	input  wire SFP_CLK_ALARM_B,
+	input  wire                SFP_CLK_ALARM_B,
 
-	input  wire ETH0_TX_FAULT,
-	input  wire ETH0_RX_LOS,
-	output wire ETH0_TX_DISABLE
+	input  wire                ETH0_TX_FAULT,
+	input  wire                ETH0_RX_LOS,
+	output wire                ETH0_TX_DISABLE
 );
 
 /*
