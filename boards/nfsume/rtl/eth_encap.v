@@ -443,11 +443,11 @@ axis_data_fifo_0 u_axis_data_fifo (
 ila_0 inst_ila (
 	.clk     (clk156), // input wire clk
 	.probe0  ({ // 256pin
-		126'd0          ,
+		//126'd0          ,
 		in_key[95:0]    ,//96
 		rx_ip_proto     ,// 8
-		rx_icmp_type    ,// 4
-		rx_icmp_code    ,// 4
+		rx_icmp_type    ,// 8
+		rx_icmp_code    ,// 8
 		in_valid        ,// 1
 		rx_cnt          ,//10
 		filter_block    ,// 1
