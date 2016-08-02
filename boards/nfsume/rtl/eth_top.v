@@ -100,7 +100,10 @@ wire        s_axis_tuser;
 
 wire [ 7:0] eth_debug;
 
-eth_encap eth_encap0 (
+eth_encap #(
+	.KEY_SIZE  (96),
+	.VAL_SIZE  (32)
+)eth_encap0 (
 	.clk156           (clk156),
 	.eth_rst          (eth_rst),
 	.debug            (eth_debug),
