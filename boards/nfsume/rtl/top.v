@@ -23,7 +23,15 @@ module top (
 	output wire ETH0_RX_N,
 	input  wire ETH0_TX_FAULT,
 	input  wire ETH0_RX_LOS,
-	output wire ETH0_TX_DISABLE
+	output wire ETH0_TX_DISABLE,
+	// Ethernet (ETH1)
+	input  wire ETH1_TX_P,
+	input  wire ETH1_TX_N,
+	output wire ETH1_RX_P,
+	output wire ETH1_RX_N,
+	input  wire ETH1_TX_FAULT,
+	input  wire ETH1_RX_LOS,
+	output wire ETH1_TX_DISABLE
 );
 
 
@@ -101,7 +109,15 @@ eth_top #(
 
 	.ETH0_TX_FAULT      (ETH0_TX_FAULT ),
 	.ETH0_RX_LOS        (ETH0_RX_LOS   ),
-	.ETH0_TX_DISABLE    (ETH0_TX_DISABLE) 
+	.ETH0_TX_DISABLE    (ETH0_TX_DISABLE),
+	
+	.ETH1_TX_P          (ETH1_TX_P),
+	.ETH1_TX_N          (ETH1_TX_N),
+	.ETH1_RX_P          (ETH1_RX_P),
+	.ETH1_RX_N          (ETH1_RX_N),
+	.ETH1_TX_FAULT      (ETH1_TX_FAULT ),
+	.ETH1_RX_LOS        (ETH1_RX_LOS   ),
+	.ETH1_TX_DISABLE    (ETH1_TX_DISABLE)
 );
 
 db_top #(

@@ -232,10 +232,10 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 	.rx_axis_aresetn         (!eth_rst),           // input wire rx_axis_aresetn
 	.tx_ifg_delay            (8'd0),               // input wire [7 : 0] tx_ifg_delay
 	.dclk                    (clk100),             // input wire dclk
-	.txp                     (),                   // output wire txp
-	.txn                     (),                   // output wire txn
-	.rxp                     (),                   // input wire rxp
-	.rxn                     (),                   // input wire rxn
+	.txp                     (ETH1_RX_P),                   // output wire txp
+	.txn                     (ETH1_RX_N),                   // output wire txn
+	.rxp                     (ETH1_TX_P),                   // input wire rxp
+	.rxn                     (ETH1_TX_N),                   // input wire rxn
 	.signal_detect           (!ETH1_RX_LOS),         // input wire signal_detect
 	.tx_fault                (ETH1_TX_FAULT),             // input wire tx_fault
 	.tx_disable              (ETH1_TX_DISABLE),         // output wire tx_disable

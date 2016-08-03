@@ -22,7 +22,7 @@ set_property -dict { PACKAGE_PIN P31  IOSTANDARD LVCMOS15 } [get_ports { LED[6] 
 set_property -dict { PACKAGE_PIN K32  IOSTANDARD LVCMOS15 } [get_ports { LED[7] }];
 #
 #set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells ten_gig_eth_pcs_pma_inst0/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
-set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells eth0_top/axi_10g_ethernet_0_ins/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
+set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells eth0_top/u_axi_10g_ethernet_0/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
 set_property PACKAGE_PIN B3 [get_ports ETH0_RX_N]
 set_property PACKAGE_PIN A5 [get_ports ETH0_TX_N]
 set_property PACKAGE_PIN A6 [get_ports ETH0_TX_P]
@@ -33,6 +33,22 @@ set_property PACKAGE_PIN L17 [get_ports ETH0_RX_LOS]
 set_property IOSTANDARD LVCMOS15 [get_ports ETH0_RX_LOS]
 set_property PACKAGE_PIN M19 [get_ports ETH0_TX_FAULT]
 set_property IOSTANDARD LVCMOS15 [get_ports ETH0_TX_FAULT]
+
+#set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells eth0_top/u_axi_10g_ethernet_1/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
+set_property -dict { PACKAGE_PIN B8 } [get_ports { ETH1_TX_P }];
+set_property -dict { PACKAGE_PIN B7 } [get_ports { ETH1_TX_N }];
+set_property -dict { PACKAGE_PIN C2 } [get_ports { ETH1_RX_P }];
+set_property -dict { PACKAGE_PIN C1 } [get_ports { ETH1_RX_N }];
+##SFP ETH2 Misc.
+#set_property -dict { PACKAGE_PIN AL22  IOSTANDARD LVCMOS15 } [get_ports { ETH2_LED[0] }]; #IO_L6P_T0_33 Sch=eth2_le    d[0]
+#set_property -dict { PACKAGE_PIN BA20  IOSTANDARD LVCMOS15 } [get_ports { ETH2_LED[1] }]; #IO_L22N_T3_32 Sch=eth2_l    ed[1]
+#set_property -dict { PACKAGE_PIN L19 IOSTANDARD LVCMOS15 } [get_ports { ETH2_MOD_DETECT }]; #IO_L24N_T3_38 Sch=eth2    _mod_detect
+#set_property -dict { PACKAGE_PIN P20 IOSTANDARD LVCMOS15 } [get_ports { ETH2_RS[0] }]; #IO_L23P_T3_38 Sch=eth2_rs[0    ]
+#set_property -dict { PACKAGE_PIN N20 IOSTANDARD LVCMOS15 } [get_ports { ETH2_RS[1] }]; #IO_L23N_T3_38 Sch=eth2_rs[1    ]
+set_property -dict { PACKAGE_PIN L20 IOSTANDARD LVCMOS15 } [get_ports { ETH1_RX_LOS }]; #IO_L24P_T3_38 Sch=eth2_rx_    los
+set_property -dict { PACKAGE_PIN B31 IOSTANDARD LVCMOS15 } [get_ports { ETH1_TX_DISABLE }]; #IO_L18N_T2_37 Sch=eth2    _tx_disable
+set_property -dict { PACKAGE_PIN C26 IOSTANDARD LVCMOS15 } [get_ports { ETH1_TX_FAULT }]; #IO_L12N_T1_MRCC_37 Sch=e    th2_tx_fault
+#
 
 # Else
 set_false_path -to [get_ports -filter {NAME=~LED*}]
