@@ -14,18 +14,31 @@ module eth_encap #(
 	input  wire                out_valid,
 	input  wire [3:0]          out_flag,
 
-	input  wire        s_axis_tvalid,
-	input  wire [63:0] s_axis_tdata,
-	input  wire [ 7:0] s_axis_tkeep,
-	input  wire        s_axis_tlast,
-	input  wire        s_axis_tuser,
+	input  wire        s_axis_rx0_tvalid,
+	input  wire [63:0] s_axis_rx0_tdata,
+	input  wire [ 7:0] s_axis_rx0_tkeep,
+	input  wire        s_axis_rx0_tlast,
+	input  wire        s_axis_rx0_tuser,
 
-	input  wire        m_axis_tready,
-	output wire        m_axis_tvalid,
-	output wire [63:0] m_axis_tdata,
-	output wire [ 7:0] m_axis_tkeep,
-	output wire        m_axis_tlast,
-	output wire        m_axis_tuser
+	input  wire        m_axis_tx0_tready,
+	output wire        m_axis_tx0_tvalid,
+	output wire [63:0] m_axis_tx0_tdata,
+	output wire [ 7:0] m_axis_tx0_tkeep,
+	output wire        m_axis_tx0_tlast,
+	output wire        m_axis_tx0_tuser,
+
+	input  wire        s_axis_rx1_tvalid,
+	input  wire [63:0] s_axis_rx1_tdata,
+	input  wire [ 7:0] s_axis_rx1_tkeep,
+	input  wire        s_axis_rx1_tlast,
+	input  wire        s_axis_rx1_tuser,
+
+	input  wire        m_axis_tx1_tready,
+	output wire        m_axis_tx1_tvalid,
+	output wire [63:0] m_axis_tx1_tdata,
+	output wire [ 7:0] m_axis_tx1_tkeep,
+	output wire        m_axis_tx1_tlast,
+	output wire        m_axis_tx1_tuser
 );
 
 localparam TX_IDLE = 2'b00,
@@ -165,14 +178,23 @@ reg [15:0] filter_ipd_len;
 /* DB Request Registers */
 reg [3:0] db_op;
 /* pipelined stages */
-reg  [1+1+8+64-1:0] pipe_stage0, pipe_stage1, pipe_stage2, pipe_stage3;
-reg  [1+1+8+64-1:0] pipe_stage4, pipe_stage5, pipe_stage6, pipe_stage7;
-wire [1+1+8+64-1:0] pipe_in_stage = {s_axis_tvalid, s_axis_tdata, 
-						s_axis_tkeep, s_axis_tlast}; 
-wire        p_axis_tvalid, p_axis_tlast;
-wire [ 7:0] p_axis_tkeep;
-wire [63:0] p_axis_tdata;
-assign {p_axis_tvalid, p_axis_tdata, p_axis_tkeep, p_axis_tlast} = pipe_stage7;
+reg  [1+1+8+64-1:0] pipe_stg0_0, pipe_stg0_1, pipe_stg0_2, pipe_stg0_3;
+reg  [1+1+8+64-1:0] pipe_stg0_4, pipe_stg0_5, pipe_stg0_6, pipe_stg0_7;
+wire [1+1+8+64-1:0] pipe_in_stage0 = {s_axis_rx0_tvalid, s_axis_rx0_tdata, 
+						s_axis_rx0_tkeep, s_axis_rx0_tlast}; 
+wire        p0_axis_tvalid, p0_axis_tlast;
+wire [ 7:0] p0_axis_tkeep;
+wire [63:0] p0_axis_tdata;
+assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0_7;
+
+reg  [1+1+8+64-1:0] pipe_stg1_0, pipe_stg1_1, pipe_stg1_2, pipe_stg1_3;
+reg  [1+1+8+64-1:0] pipe_stg1_4, pipe_stg1_5, pipe_stg1_6, pipe_stg1_7;
+wire [1+1+8+64-1:0] pipe_in_stage1 = {s_axis_rx1_tvalid, s_axis_rx1_tdata, 
+						s_axis_rx1_tkeep, s_axis_rx1_tlast}; 
+wire        p1_axis_tvalid, p1_axis_tlast;
+wire [ 7:0] p1_axis_tkeep;
+wire [63:0] p1_axis_tdata;
+assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
 wire filter_mode  = rx_ftype     == ETH_FTYPE_IP      && 
                     rx_ip_proto  == IP_PROTO_ICMP     &&
                     rx_icmp_type == ICMP_DEST_UNREACH &&
@@ -213,33 +235,57 @@ always @ (posedge clk156) begin
 		suspect_auth_dns <= 0;
 		db_op            <= 0;
 		filtered         <= 0;
-		pipe_stage0      <= 0;
-		pipe_stage1      <= 0;
-		pipe_stage2      <= 0;
-		pipe_stage3      <= 0;
-		pipe_stage4      <= 0;
-		pipe_stage5      <= 0;
-		pipe_stage6      <= 0;
-		pipe_stage7      <= 0;
+		pipe_stg0_0      <= 0;
+		pipe_stg0_1      <= 0;
+		pipe_stg0_2      <= 0;
+		pipe_stg0_3      <= 0;
+		pipe_stg0_4      <= 0;
+		pipe_stg0_5      <= 0;
+		pipe_stg0_6      <= 0;
+		pipe_stg0_7      <= 0;
+		pipe_stg1_0      <= 0;
+		pipe_stg1_1      <= 0;
+		pipe_stg1_2      <= 0;
+		pipe_stg1_3      <= 0;
+		pipe_stg1_4      <= 0;
+		pipe_stg1_5      <= 0;
+		pipe_stg1_6      <= 0;
+		pipe_stg1_7      <= 0;
 	end else begin
 		/* Pipelining  */
-		pipe_stage0 <= pipe_in_stage;
+		pipe_stg0_0 <= pipe_in_stage0;
+		pipe_stg1_0 <= pipe_in_stage1;
 		if (!filter_block) begin
-			pipe_stage1 <= pipe_stage0;
-			pipe_stage2 <= pipe_stage1;
-			pipe_stage3 <= pipe_stage2;
-			pipe_stage4 <= pipe_stage3;
-			pipe_stage5 <= pipe_stage4;
-			pipe_stage6 <= pipe_stage5;
-			pipe_stage7 <= pipe_stage6;
+			pipe_stg0_1 <= pipe_stg0_0;
+			pipe_stg0_2 <= pipe_stg0_1;
+			pipe_stg0_3 <= pipe_stg0_2;
+			pipe_stg0_4 <= pipe_stg0_3;
+			pipe_stg0_5 <= pipe_stg0_4;
+			pipe_stg0_6 <= pipe_stg0_5;
+			pipe_stg0_7 <= pipe_stg0_6;
+			pipe_stg1_1 <= pipe_stg1_0;
+			pipe_stg1_2 <= pipe_stg1_1;
+			pipe_stg1_3 <= pipe_stg1_2;
+			pipe_stg1_4 <= pipe_stg1_3;
+			pipe_stg1_5 <= pipe_stg1_4;
+			pipe_stg1_6 <= pipe_stg1_5;
+			pipe_stg1_7 <= pipe_stg1_6;
 		end else begin // Zero is inserted in regs.
-			pipe_stage1 <= 0;
-			pipe_stage2 <= 0;
-			pipe_stage3 <= 0;
-			pipe_stage4 <= 0;
-			pipe_stage5 <= 0;
-			pipe_stage6 <= 0;
-			pipe_stage7 <= 0;
+			pipe_stg0_1 <= 0;
+			pipe_stg0_2 <= 0;
+			pipe_stg0_3 <= 0;
+			pipe_stg0_4 <= 0;
+			pipe_stg0_5 <= 0;
+			pipe_stg0_6 <= 0;
+			pipe_stg0_7 <= 0;
+			pipe_stg1_0      <= 0;
+			pipe_stg1_1      <= 0;
+			pipe_stg1_2      <= 0;
+			pipe_stg1_3      <= 0;
+			pipe_stg1_4      <= 0;
+			pipe_stg1_5      <= 0;
+			pipe_stg1_6      <= 0;
+			pipe_stg1_7      <= 0;
 		end
 
 		/* DB reply */
@@ -247,8 +293,8 @@ always @ (posedge clk156) begin
 			filtered <= 1;
 
 		/* Packet Parser */
-		if (s_axis_tvalid) begin
-			if (s_axis_tlast)
+		if (s_axis_rx0_tvalid) begin
+			if (s_axis_rx0_tlast)
 				rx_cnt <= 0;
 			else
 				rx_cnt <= rx_cnt + 1;
@@ -281,81 +327,81 @@ always @ (posedge clk156) begin
 					db_op            <= 0;
 					filtered         <= 0;
 				end
-				1: rx_ftype <= {s_axis_tdata[39:32], s_axis_tdata[47:40]};
-				2: rx_ip_proto <= s_axis_tdata[63:56];
+				1: rx_ftype <= {s_axis_rx0_tdata[39:32], s_axis_rx0_tdata[47:40]};
+				2: rx_ip_proto <= s_axis_rx0_tdata[63:56];
 				3: begin
-					rx_src_ip <= {s_axis_tdata[23:16],
-					              s_axis_tdata[31:24],
-					              s_axis_tdata[39:32],
-					              s_axis_tdata[47:40]};
-								  //s_axis_tdata[55:48]};
-					rx_dst_ip[31:16] <= {s_axis_tdata[55:48],
-					                     s_axis_tdata[63:56]};
+					rx_src_ip <= {s_axis_rx0_tdata[23:16],
+					              s_axis_rx0_tdata[31:24],
+					              s_axis_rx0_tdata[39:32],
+					              s_axis_rx0_tdata[47:40]};
+								  //s_axis_rx0_tdata[55:48]};
+					rx_dst_ip[31:16] <= {s_axis_rx0_tdata[55:48],
+					                     s_axis_rx0_tdata[63:56]};
 				end
 				4: begin
-					rx_dst_ip[15: 0] <= {s_axis_tdata[ 7: 0],
-                                         s_axis_tdata[15: 8]};
+					rx_dst_ip[15: 0] <= {s_axis_rx0_tdata[ 7: 0],
+                                         s_axis_rx0_tdata[15: 8]};
 					if (rx_ftype == ETH_FTYPE_IP && 
 							rx_ip_proto == IP_PROTO_UDP) begin
-							rx_src_uport <= {s_axis_tdata[23:16], 
-							                 s_axis_tdata[31:24]};
-							rx_dst_uport <= {s_axis_tdata[39:32], 
-							                 s_axis_tdata[47:40]};
+							rx_src_uport <= {s_axis_rx0_tdata[23:16], 
+							                 s_axis_rx0_tdata[31:24]};
+							rx_dst_uport <= {s_axis_rx0_tdata[39:32], 
+							                 s_axis_rx0_tdata[47:40]};
 					end else if (rx_ftype == ETH_FTYPE_IP 
 						&& rx_ip_proto == IP_PROTO_ICMP) begin
-							rx_icmp_type <= s_axis_tdata[23:16];
-							rx_icmp_code <= s_axis_tdata[31:24];
+							rx_icmp_type <= s_axis_rx0_tdata[23:16];
+							rx_icmp_code <= s_axis_rx0_tdata[31:24];
 					end
 				end
 				5: if (filter_mode) begin
-					filter_iph_len <= s_axis_tdata[23:16];
-					filter_ipd_len <= {s_axis_tdata[39:32],
-                                       s_axis_tdata[47:40]};
+					filter_iph_len <= s_axis_rx0_tdata[23:16];
+					filter_ipd_len <= {s_axis_rx0_tdata[39:32],
+                                       s_axis_rx0_tdata[47:40]};
 				end else if (suspect_mode) begin
-					suspect_qid_dns <= {s_axis_tdata[23:16],
-					                    s_axis_tdata[31:24]};
-					suspect_parm_dns <= {s_axis_tdata[39:32],
-                                         s_axis_tdata[47:40]};
-					suspect_qcnt_dns <= {s_axis_tdata[55:48],
-					                     s_axis_tdata[63:56]};
+					suspect_qid_dns <= {s_axis_rx0_tdata[23:16],
+					                    s_axis_rx0_tdata[31:24]};
+					suspect_parm_dns <= {s_axis_rx0_tdata[39:32],
+                                         s_axis_rx0_tdata[47:40]};
+					suspect_qcnt_dns <= {s_axis_rx0_tdata[55:48],
+					                     s_axis_rx0_tdata[63:56]};
 				end                          
 				6: if (filter_mode) begin
-					filter_ip_proto      <= s_axis_tdata[31:24];
-					filter_src_ip[31:16] <= {s_axis_tdata[55:48],
-					                         s_axis_tdata[63:56]};
+					filter_ip_proto      <= s_axis_rx0_tdata[31:24];
+					filter_src_ip[31:16] <= {s_axis_rx0_tdata[55:48],
+					                         s_axis_rx0_tdata[63:56]};
 				end else if (suspect_mode) begin
-					suspect_acnt_dns <= {s_axis_tdata[ 7: 0],
-					                     s_axis_tdata[15: 8]};
-					suspect_auth_dns <= {s_axis_tdata[23:16],
-					                     s_axis_tdata[31:24]};
+					suspect_acnt_dns <= {s_axis_rx0_tdata[ 7: 0],
+					                     s_axis_rx0_tdata[15: 8]};
+					suspect_auth_dns <= {s_axis_rx0_tdata[23:16],
+					                     s_axis_rx0_tdata[31:24]};
 				end
 				7: if (filter_mode) begin
-					filter_src_ip[15:0] <= {s_axis_tdata[ 7: 0],
-					                        s_axis_tdata[15: 8]};
-					filter_dst_ip       <= {s_axis_tdata[23:16],
-					                        s_axis_tdata[31:24],
-					                        s_axis_tdata[39:32],
-					                        s_axis_tdata[47:40]};
-					filter_src_udp      <= {s_axis_tdata[55:48],
-					                        s_axis_tdata[63:56]};
+					filter_src_ip[15:0] <= {s_axis_rx0_tdata[ 7: 0],
+					                        s_axis_rx0_tdata[15: 8]};
+					filter_dst_ip       <= {s_axis_rx0_tdata[23:16],
+					                        s_axis_rx0_tdata[31:24],
+					                        s_axis_rx0_tdata[39:32],
+					                        s_axis_rx0_tdata[47:40]};
+					filter_src_udp      <= {s_axis_rx0_tdata[55:48],
+					                        s_axis_rx0_tdata[63:56]};
 				end
 				8: if (filter_mode) begin
-					filter_dst_udp      <= {s_axis_tdata[ 7: 0],
-					                        s_axis_tdata[15: 8]};
-					filter_len_udp      <= {s_axis_tdata[23:16],
-					                        s_axis_tdata[31:24]};
-					filter_qid_dns      <= {s_axis_tdata[55:48],
-					                        s_axis_tdata[63:56]};
+					filter_dst_udp      <= {s_axis_rx0_tdata[ 7: 0],
+					                        s_axis_rx0_tdata[15: 8]};
+					filter_len_udp      <= {s_axis_rx0_tdata[23:16],
+					                        s_axis_rx0_tdata[31:24]};
+					filter_qid_dns      <= {s_axis_rx0_tdata[55:48],
+					                        s_axis_rx0_tdata[63:56]};
 				end
 				9: if (filter_mode) begin
-					filter_parm_dns      <= {s_axis_tdata[ 7: 0],
-					                         s_axis_tdata[15: 8]};
-					filter_qcnt_dns      <= {s_axis_tdata[23:16],
-					                         s_axis_tdata[31:24]};
-					filter_acnt_dns      <= {s_axis_tdata[39:32],
-					                         s_axis_tdata[47:40]};
-					filter_auth_dns      <= {s_axis_tdata[55:48],
-					                         s_axis_tdata[63:56]};
+					filter_parm_dns      <= {s_axis_rx0_tdata[ 7: 0],
+					                         s_axis_rx0_tdata[15: 8]};
+					filter_qcnt_dns      <= {s_axis_rx0_tdata[23:16],
+					                         s_axis_rx0_tdata[31:24]};
+					filter_acnt_dns      <= {s_axis_rx0_tdata[39:32],
+					                         s_axis_rx0_tdata[47:40]};
+					filter_auth_dns      <= {s_axis_rx0_tdata[55:48],
+					                         s_axis_rx0_tdata[63:56]};
 				end
 				default : ;
 			endcase
@@ -363,7 +409,7 @@ always @ (posedge clk156) begin
 			if (rx_ftype == ETH_FTYPE_IP && 
 					rx_ip_proto  == IP_PROTO_UDP  &&
 					rx_dst_uport == DNS_SERV_PORT &&
-					s_axis_tlast)
+					s_axis_rx0_tlast)
 				hit_cnt[3:0] <= hit_cnt[3:0] + 1;
 			if (filter_mode)
 				hit_cnt[4]  <= 1;
@@ -403,27 +449,52 @@ assign debug = hit_cnt;
 /*
  * Loopback FIFO for packet mode
  */
-axis_data_fifo_0 u_axis_data_fifo (
+axis_data_fifo_0 u_axis_data_fifo0 (
   .s_axis_aresetn      (!eth_rst),     // input wire s_axis_aresetn
   .s_axis_aclk         (clk156),       // input wire s_axis_aclk
 
-  .s_axis_tvalid       (p_axis_tvalid),// input wire s_axis_tvalid
+  .s_axis_tvalid       (p0_axis_tvalid),// input wire s_axis_tvalid
   .s_axis_tready       (),             // te s_axis_tready
-  .s_axis_tdata        (p_axis_tdata), // input wire [63 : 0] s_axis_tdata
-  .s_axis_tkeep        (p_axis_tkeep), // input wire [7 : 0] s_axis_tkeep
-  .s_axis_tlast        (p_axis_tlast), // input wire s_axis_tlast
+  .s_axis_tdata        (p0_axis_tdata), // input wire [63 : 0] s_axis_rx0_tdata
+  .s_axis_tkeep        (p0_axis_tkeep), // input wire [7 : 0] s_axis_tkeep
+  .s_axis_tlast        (p0_axis_tlast), // input wire s_axis_tlast
   .s_axis_tuser        (1'b0), // input wire [0 : 0] s_axis_tuser
 
-  .m_axis_tvalid       (m_axis_tvalid),// output wire m_axis_tvalid
-  .m_axis_tready       (m_axis_tready),// input wire m_axis_tready
-  .m_axis_tdata        (m_axis_tdata), // output wire [63 : 0] m_axis_tdata
-  .m_axis_tkeep        (m_axis_tkeep), // output wire [7 : 0] m_axis_tkeep
-  .m_axis_tlast        (m_axis_tlast), // output wire m_axis_tlast
-  .m_axis_tuser        (m_axis_tuser), // output wire [0 : 0] m_axis_tuser
+  .m_axis_tvalid       (m_axis_tx0_tvalid),// output wire m_axis_tvalid
+  .m_axis_tready       (m_axis_tx0_tready),// input wire m_axis_tready
+  .m_axis_tdata        (m_axis_tx0_tdata), // output wire [63 : 0] m_axis_tdata
+  .m_axis_tkeep        (m_axis_tx0_tkeep), // output wire [7 : 0] m_axis_tkeep
+  .m_axis_tlast        (m_axis_tx0_tlast), // output wire m_axis_tlast
+  .m_axis_tuser        (m_axis_tx0_tuser), // output wire [0 : 0] m_axis_tuser
   .axis_data_count     (),        // output wire [31 : 0] axis_data_count
   .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
   .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
 );
+
+axis_data_fifo_0 u_axis_data_fifo1 (
+  .s_axis_aresetn      (!eth_rst),     // input wire s_axis_aresetn
+  .s_axis_aclk         (clk156),       // input wire s_axis_aclk
+
+  .s_axis_tvalid       (p1_axis_tvalid),// input wire s_axis_tvalid
+  .s_axis_tready       (),             // te s_axis_tready
+  .s_axis_tdata        (p1_axis_tdata), // input wire [63 : 0] s_axis_rx0_tdata
+  .s_axis_tkeep        (p1_axis_tkeep), // input wire [7 : 0] s_axis_tkeep
+  .s_axis_tlast        (p1_axis_tlast), // input wire s_axis_tlast
+  .s_axis_tuser        (1'b0), // input wire [0 : 0] s_axis_tuser
+
+  .m_axis_tvalid       (m_axis_tx1_tvalid),// output wire m_axis_tvalid
+  .m_axis_tready       (m_axis_tx1_tready),// input wire m_axis_tready
+  .m_axis_tdata        (m_axis_tx1_tdata), // output wire [63 : 0] m_axis_tdata
+  .m_axis_tkeep        (m_axis_tx1_tkeep), // output wire [7 : 0] m_axis_tkeep
+  .m_axis_tlast        (m_axis_tx1_tlast), // output wire m_axis_tlast
+  .m_axis_tuser        (m_axis_tx1_tuser), // output wire [0 : 0] m_axis_tuser
+  .axis_data_count     (),        // output wire [31 : 0] axis_data_count
+  .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
+  .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
+);
+
+
+
 //`ifdef SIMULATION_ILA
 /*
  *  ILA core instance
@@ -438,7 +509,7 @@ axis_data_fifo_0 u_axis_data_fifo (
 //always @ (posedge clk156) begin
 //	tready_ila <= m_axis_tready;
 //	tvalid_ila <= s_axis_tvalid;
-//	tdata_ila <= s_axis_tdata;
+//	tdata_ila <= s_axis_rx0_tdata;
 //	tkeep_ila <= s_axis_tkeep;
 //	tlast_ila <= s_axis_tlast;
 //	tuser_ila <= s_axis_tuser;

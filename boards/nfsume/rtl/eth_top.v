@@ -135,19 +135,32 @@ eth_encap #(
 	.in_valid         (in_valid ),
 	.out_valid        (out_valid),
 	.out_flag         (out_flag ),
+	// Port0 
+	.s_axis_rx0_tvalid    (s_axis_rx0_tvalid),
+	.s_axis_rx0_tdata     (s_axis_rx0_tdata),
+	.s_axis_rx0_tkeep     (s_axis_rx0_tkeep),
+	.s_axis_rx0_tlast     (s_axis_rx0_tlast),
+	.s_axis_rx0_tuser     (s_axis_rx0_tuser),
 
-	.s_axis_tvalid    (s_axis_rx0_tvalid),
-	.s_axis_tdata     (s_axis_rx0_tdata),
-	.s_axis_tkeep     (s_axis_rx0_tkeep),
-	.s_axis_tlast     (s_axis_rx0_tlast),
-	.s_axis_tuser     (s_axis_rx0_tuser),
+	.m_axis_tx0_tvalid    (m_axis_tx0_tvalid),
+	.m_axis_tx0_tready    (m_axis_tx0_tready),
+	.m_axis_tx0_tdata     (m_axis_tx0_tdata),
+	.m_axis_tx0_tkeep     (m_axis_tx0_tkeep),
+	.m_axis_tx0_tlast     (m_axis_tx0_tlast),
+	.m_axis_tx0_tuser     (m_axis_tx0_tuser),
+	// Port1 
+	.s_axis_rx1_tvalid    (s_axis_rx1_tvalid),
+	.s_axis_rx1_tdata     (s_axis_rx1_tdata),
+	.s_axis_rx1_tkeep     (s_axis_rx1_tkeep),
+	.s_axis_rx1_tlast     (s_axis_rx1_tlast),
+	.s_axis_rx1_tuser     (s_axis_rx1_tuser),
 
-	.m_axis_tvalid    (m_axis_tx0_tvalid),
-	.m_axis_tready    (m_axis_tx0_tready),
-	.m_axis_tdata     (m_axis_tx0_tdata),
-	.m_axis_tkeep     (m_axis_tx0_tkeep),
-	.m_axis_tlast     (m_axis_tx0_tlast),
-	.m_axis_tuser     (m_axis_tx0_tuser)
+	.m_axis_tx1_tvalid    (m_axis_tx1_tvalid),
+	.m_axis_tx1_tready    (m_axis_tx1_tready),
+	.m_axis_tx1_tdata     (m_axis_tx1_tdata),
+	.m_axis_tx1_tkeep     (m_axis_tx1_tkeep),
+	.m_axis_tx1_tlast     (m_axis_tx1_tlast),
+	.m_axis_tx1_tuser     (m_axis_tx1_tuser)
 );
 
 
@@ -228,84 +241,84 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 
 
 axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
-	.tx_axis_aresetn              (!eth_rst),           // input wire tx_axis_aresetn
-	.rx_axis_aresetn              (!eth_rst),           // input wire rx_axis_aresetn
-	.tx_ifg_delay                 (8'd0),               // input wire [7 : 0] tx_ifg_delay
-	.dclk                         (clk100),             // input wire dclk
-	.txp                          (ETH1_RX_P),                   // output wire txp
-	.txn                          (ETH1_RX_N),                   // output wire txn
-	.rxp                          (ETH1_TX_P),                   // input wire rxp
-	.rxn                          (ETH1_TX_N),                   // input wire rxn
-	.signal_detect                (!ETH1_RX_LOS),         // input wire signal_detect
-	.tx_fault                     (ETH1_TX_FAULT),             // input wire tx_fault
-	.tx_disable                   (ETH1_TX_DISABLE),         // output wire tx_disable
-	.pcspma_status                (),        // output wire [7 : 0] pcspma_status
-	.sim_speedup_control          (1'b0),           // input wire sim_speedup_control
-	.rxrecclk_out                 (),                  // output wire rxrecclk_out
-	.areset_coreclk               (areset_coreclk),         // input wire areset_coreclk
-	.txusrclk                     (txusrclk),               // input wire txusrclk
-	.txusrclk2                    (txusrclk2),              // input wire txusrclk2
-	.txoutclk                     (txoutclk),               // output wire txoutclk
-	.txuserrdy                    (txuserrdy),              // input wire txuserrdy
-	.tx_resetdone                 (),           // output wire tx_resetdone
-	.rx_resetdone                 (),           // output wire rx_resetdone
-	.coreclk                      (clk156),                 // input wire coreclk
-	.areset                       (eth_rst),                 // input wire areset
-	.gttxreset                    (gttxreset),              // input wire gttxreset
-	.gtrxreset                    (gtrxreset),              // input wire gtrxreset
-	.qplllock                     (qplllock),               // input wire qplllock
-	.qplloutclk                   (qplloutclk),             // input wire qplloutclk
-	.qplloutrefclk                (qplloutrefclk),          // input wire qplloutrefclk
-	.reset_counter_done           (reset_counter_done),     // input wire reset_counter_done
+	.tx_axis_aresetn              (!eth_rst),      
+	.rx_axis_aresetn              (!eth_rst),      
+	.tx_ifg_delay                 (8'd0),          
+	.dclk                         (clk100),        
+	.txp                          (ETH1_RX_P),     
+	.txn                          (ETH1_RX_N),     
+	.rxp                          (ETH1_TX_P),     
+	.rxn                          (ETH1_TX_N),     
+	.signal_detect                (!ETH1_RX_LOS),  
+	.tx_fault                     (ETH1_TX_FAULT), 
+	.tx_disable                   (ETH1_TX_DISABLE),   
+	.pcspma_status                (),               
+	.sim_speedup_control          (1'b0),           
+	.rxrecclk_out                 (),               
+	.areset_coreclk               (areset_coreclk), 
+	.txusrclk                     (txusrclk),       
+	.txusrclk2                    (txusrclk2),      
+	.txoutclk                     (txoutclk),       
+	.txuserrdy                    (txuserrdy),      
+	.tx_resetdone                 (),          
+	.rx_resetdone                 (),          
+	.coreclk                      (clk156),    
+	.areset                       (eth_rst),        
+	.gttxreset                    (gttxreset),      
+	.gtrxreset                    (gtrxreset),      
+	.qplllock                     (qplllock),       
+	.qplloutclk                   (qplloutclk),     
+	.qplloutrefclk                (qplloutrefclk),  
+	.reset_counter_done           (reset_counter_done),  
 
-	.mac_tx_configuration_vector  (mac_tx_configuration_vector),    // input wire [79 : 0] mac_tx_configuration_vector
-	.mac_rx_configuration_vector  (mac_rx_configuration_vector),    // input wire [79 : 0] mac_rx_configuration_vector
-	.mac_status_vector            (),                        // output wire [1 : 0] mac_status_vector
-	.pcs_pma_configuration_vector (pcs_pma_configuration_vector),  // input wire [535 : 0] pcs_pma_configuration_vector
-	.pcs_pma_status_vector        (),                // output wire [447 : 0] pcs_pma_status_vector
+	.mac_tx_configuration_vector  (mac_tx_configuration_vector),
+	.mac_rx_configuration_vector  (mac_rx_configuration_vector),
+	.mac_status_vector            (),                     
+	.pcs_pma_configuration_vector (pcs_pma_configuration_vector),
+	.pcs_pma_status_vector        (),    
 	// AXI Stream Interface
-	.s_axis_tx_tdata              (m_axis_tx1_tdata),        // input wire [63 : 0] s_axis_tx_tdata
-	.s_axis_tx_tkeep              (m_axis_tx1_tkeep),        // input wire [7 : 0] s_axis_tx_tkeep
-	.s_axis_tx_tlast              (m_axis_tx1_tlast),        // input wire s_axis_tx_tlast
-	.s_axis_tx_tready             (m_axis_tx1_tready),       // output wire s_axis_tx_tready
-	.s_axis_tx_tuser              (m_axis_tx1_tuser),        // input wire [0 : 0] s_axis_tx_tuser
-	.s_axis_tx_tvalid             (m_axis_tx1_tvalid),       // input wire s_axis_tx_tvalid
-	.s_axis_pause_tdata           (16'd0),                   // input wire [15 : 0] s_axis_pause_tdata
-	.s_axis_pause_tvalid          (1'd0),                    // input wire s_axis_pause_tvalid
-	.m_axis_rx_tdata              (s_axis_rx1_tdata),        // output wire [63 : 0] m_axis_rx_tdata
-	.m_axis_rx_tkeep              (s_axis_rx1_tkeep),        // output wire [7 : 0] m_axis_rx_tkeep
-	.m_axis_rx_tlast              (s_axis_rx1_tlast),        // output wire m_axis_rx_tlast
-	.m_axis_rx_tuser              (s_axis_rx1_tuser),        // output wire m_axis_rx_tuser
-	.m_axis_rx_tvalid             (s_axis_rx1_tvalid),       // output wire m_axis_rx_tvalid
+	.s_axis_tx_tdata              (m_axis_tx1_tdata),  
+	.s_axis_tx_tkeep              (m_axis_tx1_tkeep),  
+	.s_axis_tx_tlast              (m_axis_tx1_tlast),  
+	.s_axis_tx_tready             (m_axis_tx1_tready), 
+	.s_axis_tx_tuser              (m_axis_tx1_tuser),  
+	.s_axis_tx_tvalid             (m_axis_tx1_tvalid), 
+	.s_axis_pause_tdata           (16'd0),             
+	.s_axis_pause_tvalid          (1'd0),              
+	.m_axis_rx_tdata              (s_axis_rx1_tdata),  
+	.m_axis_rx_tkeep              (s_axis_rx1_tkeep),  
+	.m_axis_rx_tlast              (s_axis_rx1_tlast),  
+	.m_axis_rx_tuser              (s_axis_rx1_tuser),  
+	.m_axis_rx_tvalid             (s_axis_rx1_tvalid), 
 	.tx_statistics_valid          (),  
 	.tx_statistics_vector         (),  
 	.rx_statistics_valid          (),  
 	.rx_statistics_vector         ()   
 );
 
-/*
- * Loopback FIFO
- */
-axis_data_fifo_1 u_axis_data_fifo (
-  .s_axis_aresetn      (!eth_rst),          // input wire s_axis_aresetn
-  .s_axis_aclk         (clk156),            // input wire s_axis_aclk
-  .s_axis_tvalid       (s_axis_rx1_tvalid), // input wire s_axis_tvalid
-  .s_axis_tready       (),            // output wire s_axis_tready
-  .s_axis_tdata        (s_axis_rx1_tdata),  // input wire [63 : 0] s_axis_tdata
-  .s_axis_tkeep        (s_axis_rx1_tkeep),  // input wire [7 : 0] s_axis_tkeep
-  .s_axis_tlast        (s_axis_rx1_tlast),  // input wire s_axis_tlast
-  .s_axis_tuser        (1'b0),              // input wire [0 : 0] s_axis_tuser
-  .m_axis_tvalid       (m_axis_tx1_tvalid), // output wire m_axis_tvalid
-  .m_axis_tready       (m_axis_tx1_tready), // input wire m_axis_tready
-  .m_axis_tdata        (m_axis_tx1_tdata),  // output wire [63 : 0] m_axis_tdata
-  .m_axis_tkeep        (m_axis_tx1_tkeep),  // output wire [7 : 0] m_axis_tkeep
-  .m_axis_tlast        (m_axis_tx1_tlast),  // output wire m_axis_tlast
-  .m_axis_tuser        (m_axis_tx1_tuser),  // output wire [0 : 0] m_axis_tuser
-  .axis_data_count     (), 
-  .axis_wr_data_count  (), 
-  .axis_rd_data_count  ()  
-);
-
+///*
+// * Loopback FIFO
+// */
+//axis_data_fifo_1 u_axis_data_fifo (
+//  .s_axis_aresetn      (!eth_rst),          // input wire s_axis_aresetn
+//  .s_axis_aclk         (clk156),            // input wire s_axis_aclk
+//  .s_axis_tvalid       (s_axis_rx1_tvalid), // input wire s_axis_tvalid
+//  .s_axis_tready       (),                  // output wire s_axis_tready
+//  .s_axis_tdata        (s_axis_rx1_tdata),  // input wire [63 : 0] s_axis_tdata
+//  .s_axis_tkeep        (s_axis_rx1_tkeep),  // input wire [7 : 0] s_axis_tkeep
+//  .s_axis_tlast        (s_axis_rx1_tlast),  // input wire s_axis_tlast
+//  .s_axis_tuser        (1'b0),              // input wire [0 : 0] s_axis_tuser
+//  .m_axis_tvalid       (m_axis_tx1_tvalid), // output wire m_axis_tvalid
+//  .m_axis_tready       (m_axis_tx1_tready), // input wire m_axis_tready
+//  .m_axis_tdata        (m_axis_tx1_tdata),  // output wire [63 : 0] m_axis_tdata
+//  .m_axis_tkeep        (m_axis_tx1_tkeep),  // output wire [7 : 0] m_axis_tkeep
+//  .m_axis_tlast        (m_axis_tx1_tlast),  // output wire m_axis_tlast
+//  .m_axis_tuser        (m_axis_tx1_tuser),  // output wire [0 : 0] m_axis_tuser
+//  .axis_data_count     (), 
+//  .axis_wr_data_count  (), 
+//  .axis_rd_data_count  ()  
+//);
+//
 /*
  * Loopback FIFO for packet mode
  */
@@ -331,22 +344,6 @@ axis_data_fifo_1 u_axis_data_fifo (
 //  .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
 //  .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
 //);
-ila_0 u_ila (
-	.clk     (clk156), // input wire clk
-	.probe0  ({ // 256pin
-		m_axis_tx1_tvalid,
-		m_axis_tx1_tready,
-		m_axis_tx1_tdata,
-		m_axis_tx1_tkeep,
-		m_axis_tx1_tlast,
-		m_axis_tx1_tuser,
-		s_axis_rx1_tvalid,
-		s_axis_rx1_tdata,
-		s_axis_rx1_tkeep,
-		s_axis_rx1_tlast,
-		s_axis_rx1_tuser
-	}) // input wire [75:0] probe0
-);
 
 reg [31:0] led_cnt;
 always @ (posedge clk156)
