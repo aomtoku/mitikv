@@ -21,20 +21,20 @@ module eth_top #(
 	output wire                SFP_REC_CLK_P,
 	output wire                SFP_REC_CLK_N,
 
+	inout  wire                I2C_FPGA_SCL,
+	inout  wire                I2C_FPGA_SDA,
+
+	input  wire                SFP_CLK_ALARM_B,
+	// Ether Port 0
 	input  wire                ETH0_TX_P,
 	input  wire                ETH0_TX_N,
 	output wire                ETH0_RX_P,
 	output wire                ETH0_RX_N,
 
-	inout  wire                I2C_FPGA_SCL,
-	inout  wire                I2C_FPGA_SDA,
-
-	input  wire                SFP_CLK_ALARM_B,
-
 	input  wire                ETH0_TX_FAULT,
 	input  wire                ETH0_RX_LOS,
 	output wire                ETH0_TX_DISABLE,
-
+	// Ether Port 0
 	input  wire                ETH1_TX_P,
 	input  wire                ETH1_TX_N,
 	output wire                ETH1_RX_P,
@@ -300,24 +300,24 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 /*
  * Loopback FIFO
  */
-axis_data_fifo_1 u_axis_data_fifo (
-  .s_axis_aresetn(!eth_rst),          // input wire s_axis_aresetn
-  .s_axis_aclk(clk156),                // input wire s_axis_aclk
-  .s_axis_tvalid(s_axis_tx1_tvalid),            // input wire s_axis_tvalid
-  .s_axis_tready(),            // output wire s_axis_tready
-  .s_axis_tdata(s_axis_tx1_tdata),              // input wire [63 : 0] s_axis_tdata
-  .s_axis_tkeep(s_axis_tx1_tkeep),              // input wire [7 : 0] s_axis_tkeep
-  .s_axis_tlast(s_axis_tx1_tlast),              // input wire s_axis_tlast
-  .s_axis_tuser(1'b0),              // input wire [0 : 0] s_axis_tuser
-  .m_axis_tvalid(m_axis_rx1_tvalid),            // output wire m_axis_tvalid
-  .m_axis_tready(m_axis_rx1_tready),            // input wire m_axis_tready
-  .m_axis_tdata(m_axis_rx1_tdata),              // output wire [63 : 0] m_axis_tdata
-  .m_axis_tkeep(m_axis_rx1_tkeep),              // output wire [7 : 0] m_axis_tkeep
-  .m_axis_tlast(m_axis_rx1_tlast),              // output wire m_axis_tlast
-  .m_axis_tuser(m_axis_rx1_tuser),              // output wire [0 : 0] m_axis_tuser
-  .axis_data_count(),        // output wire [31 : 0] axis_data_count
-  .axis_wr_data_count(),  // output wire [31 : 0] axis_wr_data_count
-  .axis_rd_data_count()  // output wire [31 : 0] axis_rd_data_count
+axis_data_fifo_0 u_axis_data_fifo (
+  .s_axis_aresetn      (!eth_rst),          // input wire s_axis_aresetn
+  .s_axis_aclk         (clk156),            // input wire s_axis_aclk
+  .s_axis_tvalid       (s_axis_tx1_tvalid), // input wire s_axis_tvalid
+  .s_axis_tready       (),            // output wire s_axis_tready
+  .s_axis_tdata        (s_axis_tx1_tdata),  // input wire [63 : 0] s_axis_tdata
+  .s_axis_tkeep        (s_axis_tx1_tkeep),  // input wire [7 : 0] s_axis_tkeep
+  .s_axis_tlast        (s_axis_tx1_tlast),  // input wire s_axis_tlast
+  .s_axis_tuser        (1'b0),              // input wire [0 : 0] s_axis_tuser
+  .m_axis_tvalid       (m_axis_rx1_tvalid), // output wire m_axis_tvalid
+  .m_axis_tready       (m_axis_rx1_tready), // input wire m_axis_tready
+  .m_axis_tdata        (m_axis_rx1_tdata),  // output wire [63 : 0] m_axis_tdata
+  .m_axis_tkeep        (m_axis_rx1_tkeep),  // output wire [7 : 0] m_axis_tkeep
+  .m_axis_tlast        (m_axis_rx1_tlast),  // output wire m_axis_tlast
+  .m_axis_tuser        (m_axis_rx1_tuser),  // output wire [0 : 0] m_axis_tuser
+  .axis_data_count     (), 
+  .axis_wr_data_count  (), 
+  .axis_rd_data_count  ()  
 );
 
 /*
@@ -345,6 +345,22 @@ axis_data_fifo_1 u_axis_data_fifo (
 //  .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
 //  .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
 //);
+ila_0 u_ila (
+	.clk     (clk156), // input wire clk
+	.probe0  ({ // 256pin
+		m_axis_tx1_tvalid,
+		m_axis_tx1_tready,
+		m_axis_tx1_tdata,
+		m_axis_tx1_tkeep,
+		m_axis_tx1_tlast,
+		m_axis_tx1_tuser,
+		s_axis_rx1_tvalid,
+		s_axis_rx1_tdata,
+		s_axis_rx1_tkeep,
+		s_axis_rx1_tlast,
+		s_axis_rx1_tuser
+	}) // input wire [75:0] probe0
+);
 
 reg [31:0] led_cnt;
 always @ (posedge clk156)
