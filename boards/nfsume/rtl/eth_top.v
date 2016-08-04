@@ -33,7 +33,7 @@ module eth_top #(
 
 	input  wire                ETH0_TX_FAULT,
 	input  wire                ETH0_RX_LOS,
-	output wire                ETH0_TX_DISABLE
+	output wire                ETH0_TX_DISABLE,
 
 	input  wire                ETH1_TX_P,
 	input  wire                ETH1_TX_N,
