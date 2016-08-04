@@ -159,14 +159,19 @@ localparam STATUS_SUSPECT = 2'b01,
 
 
 /* general regs for parsering */
-reg  [9:0] rx_cnt;
+reg  [9:0] rx_cnt0, rx_cnt1;
 reg  [7:0] hit_cnt;
 /* regs for parsering */
-reg [15:0] rx_ftype;
-reg  [7:0] rx_ip_proto;
-reg [15:0] rx_dst_uport, rx_src_uport;
-reg [31:0] rx_dst_ip, rx_src_ip;
-reg  [7:0] rx_icmp_type, rx_icmp_code;
+reg [15:0] rx0_ftype;
+reg  [7:0] rx0_ip_proto;
+reg [15:0] rx0_dst_uport, rx0_src_uport;
+reg [31:0] rx0_dst_ip,    rx0_src_ip;
+reg  [7:0] rx0_icmp_type, rx0_icmp_code;
+reg [15:0] rx1_ftype;
+reg  [7:0] rx1_ip_proto;
+reg [15:0] rx1_dst_uport, rx1_src_uport;
+reg [31:0] rx1_dst_ip,    rx1_src_ip;
+reg  [7:0] rx1_icmp_type, rx1_icmp_code;
 reg [ 7:0] filter_ip_proto;
 reg [31:0] filter_src_ip, filter_dst_ip;
 reg [15:0] filter_dst_udp, filter_len_udp, filter_qid_dns, filter_src_udp;
@@ -176,7 +181,7 @@ reg [15:0] suspect_qid_dns;
 reg  [7:0] filter_iph_len;
 reg [15:0] filter_ipd_len;
 /* DB Request Registers */
-reg [3:0] db_op;
+reg [3:0] db_op0, db_op1;
 /* pipelined stages */
 reg  [1+1+8+64-1:0] pipe_stg0_0, pipe_stg0_1, pipe_stg0_2, pipe_stg0_3;
 reg  [1+1+8+64-1:0] pipe_stg0_4, pipe_stg0_5, pipe_stg0_6, pipe_stg0_7;
@@ -195,28 +200,37 @@ wire        p1_axis_tvalid, p1_axis_tlast;
 wire [ 7:0] p1_axis_tkeep;
 wire [63:0] p1_axis_tdata;
 assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
-wire filter_mode  = rx_ftype     == ETH_FTYPE_IP      && 
-                    rx_ip_proto  == IP_PROTO_ICMP     &&
-                    rx_icmp_type == ICMP_DEST_UNREACH &&
-                    rx_icmp_code == ICMP_PORT_UNREACH;
-wire suspect_mode = rx_ftype     == ETH_FTYPE_IP      &&
-                    rx_ip_proto  == IP_PROTO_UDP      &&
-                    rx_src_uport == DNS_SERV_PORT;
+wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
+                    rx1_ip_proto  == IP_PROTO_ICMP     &&
+                    rx1_icmp_type == ICMP_DEST_UNREACH &&
+                    rx1_icmp_code == ICMP_PORT_UNREACH;
+wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
+                    rx0_ip_proto  == IP_PROTO_UDP      &&
+                    rx0_src_uport == DNS_SERV_PORT;
 reg  filtered;
 wire filter_block = filtered || (out_valid && out_flag[2:1] == 2'b10);
 
 always @ (posedge clk156) begin
 	if (eth_rst) begin
-		rx_cnt           <= 0;
+		rx_cnt0          <= 0;
+		rx_cnt1          <= 0;
 		hit_cnt          <= 0;
-		rx_ip_proto      <= 0;
-		rx_src_ip        <= 0;
-		rx_dst_ip        <= 0;
-		rx_src_uport     <= 0;
-		rx_dst_uport     <= 0;
-		rx_ftype         <= 0;
-		rx_icmp_type     <= 0;
-		rx_icmp_code     <= 0;
+		rx0_ip_proto     <= 0;
+		rx0_src_ip       <= 0;
+		rx0_dst_ip       <= 0;
+		rx0_src_uport    <= 0;
+		rx0_dst_uport    <= 0;
+		rx0_ftype        <= 0;
+		rx0_icmp_type    <= 0;
+		rx0_icmp_code    <= 0;
+		rx1_ip_proto     <= 0;
+		rx1_src_ip       <= 0;
+		rx1_dst_ip       <= 0;
+		rx1_src_uport    <= 0;
+		rx1_dst_uport    <= 0;
+		rx1_ftype        <= 0;
+		rx1_icmp_type    <= 0;
+		rx1_icmp_code    <= 0;
 		filter_ip_proto  <= 0;
 		filter_src_ip    <= 0; 
 		filter_dst_ip    <= 0; 
@@ -233,7 +247,8 @@ always @ (posedge clk156) begin
 		suspect_qcnt_dns <= 0; 
 		suspect_acnt_dns <= 0; 
 		suspect_auth_dns <= 0;
-		db_op            <= 0;
+		db_op0           <= 0;
+		db_op1           <= 0;
 		filtered         <= 0;
 		pipe_stg0_0      <= 0;
 		pipe_stg0_1      <= 0;
@@ -278,14 +293,14 @@ always @ (posedge clk156) begin
 			pipe_stg0_5 <= 0;
 			pipe_stg0_6 <= 0;
 			pipe_stg0_7 <= 0;
-			pipe_stg1_0      <= 0;
-			pipe_stg1_1      <= 0;
-			pipe_stg1_2      <= 0;
-			pipe_stg1_3      <= 0;
-			pipe_stg1_4      <= 0;
-			pipe_stg1_5      <= 0;
-			pipe_stg1_6      <= 0;
-			pipe_stg1_7      <= 0;
+			pipe_stg1_0 <= 0;
+			pipe_stg1_1 <= 0;
+			pipe_stg1_2 <= 0;
+			pipe_stg1_3 <= 0;
+			pipe_stg1_4 <= 0;
+			pipe_stg1_5 <= 0;
+			pipe_stg1_6 <= 0;
+			pipe_stg1_7 <= 0;
 		end
 
 		/* DB reply */
@@ -295,19 +310,96 @@ always @ (posedge clk156) begin
 		/* Packet Parser */
 		if (s_axis_rx0_tvalid) begin
 			if (s_axis_rx0_tlast)
-				rx_cnt <= 0;
+				rx_cnt0 <= 0;
 			else
-				rx_cnt <= rx_cnt + 1;
-			case (rx_cnt)
+				rx_cnt0 <= rx_cnt0 + 1;
+			case (rx_cnt0)
 				0: begin // Reset all registers
-					rx_ip_proto      <= 0;
-					rx_src_ip        <= 0;
-					rx_dst_ip        <= 0;
-					rx_src_uport     <= 0;
-					rx_dst_uport     <= 0;
-					rx_ftype         <= 0;
-					rx_icmp_type     <= 0;
-					rx_icmp_code     <= 0;
+					rx0_ip_proto      <= 0;
+					rx0_src_ip        <= 0;
+					rx0_dst_ip        <= 0;
+					rx0_src_uport     <= 0;
+					rx0_dst_uport     <= 0;
+					rx0_ftype         <= 0;
+					rx0_icmp_type     <= 0;
+					rx0_icmp_code     <= 0;
+					suspect_qid_dns  <= 0; 
+					suspect_parm_dns <= 0; 
+					suspect_qcnt_dns <= 0; 
+					suspect_acnt_dns <= 0; 
+					suspect_auth_dns <= 0;
+					db_op0           <= 0;
+					filtered         <= 0;
+				end
+				1: rx0_ftype <= {s_axis_rx0_tdata[39:32], s_axis_rx0_tdata[47:40]};
+				2: rx0_ip_proto <= s_axis_rx0_tdata[63:56];
+				3: begin
+					rx0_src_ip <= {s_axis_rx0_tdata[23:16],
+					              s_axis_rx0_tdata[31:24],
+					              s_axis_rx0_tdata[39:32],
+					              s_axis_rx0_tdata[47:40]};
+					rx0_dst_ip[31:16] <= {s_axis_rx0_tdata[55:48],
+					                     s_axis_rx0_tdata[63:56]};
+				end
+				4: begin
+					rx0_dst_ip[15: 0] <= {s_axis_rx0_tdata[ 7: 0],
+                                         s_axis_rx0_tdata[15: 8]};
+					if (rx0_ftype == ETH_FTYPE_IP && 
+							rx0_ip_proto == IP_PROTO_UDP) begin
+							rx0_src_uport <= {s_axis_rx0_tdata[23:16], 
+							                  s_axis_rx0_tdata[31:24]};
+							rx0_dst_uport <= {s_axis_rx0_tdata[39:32], 
+							                 s_axis_rx0_tdata[47:40]};
+					end
+				end
+				5: if (suspect_mode) begin
+					suspect_qid_dns <= {s_axis_rx0_tdata[23:16],
+					                    s_axis_rx0_tdata[31:24]};
+					suspect_parm_dns <= {s_axis_rx0_tdata[39:32],
+                                         s_axis_rx0_tdata[47:40]};
+					suspect_qcnt_dns <= {s_axis_rx0_tdata[55:48],
+					                     s_axis_rx0_tdata[63:56]};
+				end                          
+				6: if (suspect_mode) begin
+					suspect_acnt_dns <= {s_axis_rx0_tdata[ 7: 0],
+					                     s_axis_rx0_tdata[15: 8]};
+					suspect_auth_dns <= {s_axis_rx0_tdata[23:16],
+					                     s_axis_rx0_tdata[31:24]};
+				end
+				default : ;
+			endcase
+			/* Debug Logic */
+			if (rx0_ftype == ETH_FTYPE_IP && 
+					rx0_ip_proto  == IP_PROTO_UDP  &&
+					rx0_dst_uport == DNS_SERV_PORT &&
+					s_axis_rx0_tlast)
+				hit_cnt[3:0] <= hit_cnt[3:0] + 1;
+			if (filter_mode)
+				hit_cnt[4]  <= 1;
+			if (suspect_mode)
+				hit_cnt[5]  <= 1;
+			if (suspect_mode && suspect_parm_dns[0] == DNS_PARAM_RESPONSE &&
+				rx_cnt0 == 10'd6) begin
+				db_op0 <= 4'b0011;
+				hit_cnt[6] <= 1;
+			end
+		end
+		// Port 1
+		if (s_axis_rx1_tvalid) begin
+			if (s_axis_rx1_tlast)
+				rx_cnt1 <= 0;
+			else
+				rx_cnt1 <= rx_cnt1 + 1;
+			case (rx_cnt1)
+				0: begin // Reset all registers
+					rx1_ip_proto      <= 0;
+					rx1_src_ip        <= 0;
+					rx1_dst_ip        <= 0;
+					rx1_src_uport     <= 0;
+					rx1_dst_uport     <= 0;
+					rx1_ftype         <= 0;
+					rx1_icmp_type     <= 0;
+					rx1_icmp_code     <= 0;
 					filter_ip_proto  <= 0;
 					filter_src_ip    <= 0; 
 					filter_dst_ip    <= 0; 
@@ -319,110 +411,71 @@ always @ (posedge clk156) begin
 					filter_qcnt_dns  <= 0; 
 					filter_acnt_dns  <= 0; 
 					filter_auth_dns  <= 0;
-					suspect_qid_dns  <= 0; 
-					suspect_parm_dns <= 0; 
-					suspect_qcnt_dns <= 0; 
-					suspect_acnt_dns <= 0; 
-					suspect_auth_dns <= 0;
-					db_op            <= 0;
+					db_op1           <= 0;
 					filtered         <= 0;
 				end
-				1: rx_ftype <= {s_axis_rx0_tdata[39:32], s_axis_rx0_tdata[47:40]};
-				2: rx_ip_proto <= s_axis_rx0_tdata[63:56];
+				1: rx1_ftype <= {s_axis_rx1_tdata[39:32], s_axis_rx1_tdata[47:40]};
+				2: rx1_ip_proto <= s_axis_rx1_tdata[63:56];
 				3: begin
-					rx_src_ip <= {s_axis_rx0_tdata[23:16],
-					              s_axis_rx0_tdata[31:24],
-					              s_axis_rx0_tdata[39:32],
-					              s_axis_rx0_tdata[47:40]};
-								  //s_axis_rx0_tdata[55:48]};
-					rx_dst_ip[31:16] <= {s_axis_rx0_tdata[55:48],
-					                     s_axis_rx0_tdata[63:56]};
+					rx1_src_ip <= {s_axis_rx1_tdata[23:16],
+					              s_axis_rx1_tdata[31:24],
+					              s_axis_rx1_tdata[39:32],
+					              s_axis_rx1_tdata[47:40]};
+					rx1_dst_ip[31:16] <= {s_axis_rx1_tdata[55:48],
+					                      s_axis_rx1_tdata[63:56]};
 				end
 				4: begin
-					rx_dst_ip[15: 0] <= {s_axis_rx0_tdata[ 7: 0],
-                                         s_axis_rx0_tdata[15: 8]};
-					if (rx_ftype == ETH_FTYPE_IP && 
-							rx_ip_proto == IP_PROTO_UDP) begin
-							rx_src_uport <= {s_axis_rx0_tdata[23:16], 
-							                 s_axis_rx0_tdata[31:24]};
-							rx_dst_uport <= {s_axis_rx0_tdata[39:32], 
-							                 s_axis_rx0_tdata[47:40]};
-					end else if (rx_ftype == ETH_FTYPE_IP 
-						&& rx_ip_proto == IP_PROTO_ICMP) begin
-							rx_icmp_type <= s_axis_rx0_tdata[23:16];
-							rx_icmp_code <= s_axis_rx0_tdata[31:24];
+					rx1_dst_ip[15: 0] <= {s_axis_rx1_tdata[ 7: 0],
+                                         s_axis_rx1_tdata[15: 8]};
+					if (rx1_ftype == ETH_FTYPE_IP 
+						&& rx1_ip_proto == IP_PROTO_ICMP) begin
+							rx1_icmp_type <= s_axis_rx1_tdata[23:16];
+							rx1_icmp_code <= s_axis_rx1_tdata[31:24];
 					end
 				end
 				5: if (filter_mode) begin
-					filter_iph_len <= s_axis_rx0_tdata[23:16];
-					filter_ipd_len <= {s_axis_rx0_tdata[39:32],
-                                       s_axis_rx0_tdata[47:40]};
-				end else if (suspect_mode) begin
-					suspect_qid_dns <= {s_axis_rx0_tdata[23:16],
-					                    s_axis_rx0_tdata[31:24]};
-					suspect_parm_dns <= {s_axis_rx0_tdata[39:32],
-                                         s_axis_rx0_tdata[47:40]};
-					suspect_qcnt_dns <= {s_axis_rx0_tdata[55:48],
-					                     s_axis_rx0_tdata[63:56]};
-				end                          
+					filter_iph_len <= s_axis_rx1_tdata[23:16];
+					filter_ipd_len <= {s_axis_rx1_tdata[39:32],
+                                       s_axis_rx1_tdata[47:40]};
+				end 
 				6: if (filter_mode) begin
-					filter_ip_proto      <= s_axis_rx0_tdata[31:24];
-					filter_src_ip[31:16] <= {s_axis_rx0_tdata[55:48],
-					                         s_axis_rx0_tdata[63:56]};
-				end else if (suspect_mode) begin
-					suspect_acnt_dns <= {s_axis_rx0_tdata[ 7: 0],
-					                     s_axis_rx0_tdata[15: 8]};
-					suspect_auth_dns <= {s_axis_rx0_tdata[23:16],
-					                     s_axis_rx0_tdata[31:24]};
-				end
+					filter_ip_proto      <= s_axis_rx1_tdata[31:24];
+					filter_src_ip[31:16] <= {s_axis_rx1_tdata[55:48],
+					                         s_axis_rx1_tdata[63:56]};
+				end 
 				7: if (filter_mode) begin
-					filter_src_ip[15:0] <= {s_axis_rx0_tdata[ 7: 0],
-					                        s_axis_rx0_tdata[15: 8]};
-					filter_dst_ip       <= {s_axis_rx0_tdata[23:16],
-					                        s_axis_rx0_tdata[31:24],
-					                        s_axis_rx0_tdata[39:32],
-					                        s_axis_rx0_tdata[47:40]};
-					filter_src_udp      <= {s_axis_rx0_tdata[55:48],
-					                        s_axis_rx0_tdata[63:56]};
+					filter_src_ip[15:0] <= {s_axis_rx1_tdata[ 7: 0],
+					                        s_axis_rx1_tdata[15: 8]};
+					filter_dst_ip       <= {s_axis_rx1_tdata[23:16],
+					                        s_axis_rx1_tdata[31:24],
+					                        s_axis_rx1_tdata[39:32],
+					                        s_axis_rx1_tdata[47:40]};
+					filter_src_udp      <= {s_axis_rx1_tdata[55:48],
+					                        s_axis_rx1_tdata[63:56]};
 				end
 				8: if (filter_mode) begin
-					filter_dst_udp      <= {s_axis_rx0_tdata[ 7: 0],
-					                        s_axis_rx0_tdata[15: 8]};
-					filter_len_udp      <= {s_axis_rx0_tdata[23:16],
-					                        s_axis_rx0_tdata[31:24]};
-					filter_qid_dns      <= {s_axis_rx0_tdata[55:48],
-					                        s_axis_rx0_tdata[63:56]};
+					filter_dst_udp      <= {s_axis_rx1_tdata[ 7: 0],
+					                        s_axis_rx1_tdata[15: 8]};
+					filter_len_udp      <= {s_axis_rx1_tdata[23:16],
+					                        s_axis_rx1_tdata[31:24]};
+					filter_qid_dns      <= {s_axis_rx1_tdata[55:48],
+					                        s_axis_rx1_tdata[63:56]};
 				end
 				9: if (filter_mode) begin
-					filter_parm_dns      <= {s_axis_rx0_tdata[ 7: 0],
-					                         s_axis_rx0_tdata[15: 8]};
-					filter_qcnt_dns      <= {s_axis_rx0_tdata[23:16],
-					                         s_axis_rx0_tdata[31:24]};
-					filter_acnt_dns      <= {s_axis_rx0_tdata[39:32],
-					                         s_axis_rx0_tdata[47:40]};
-					filter_auth_dns      <= {s_axis_rx0_tdata[55:48],
-					                         s_axis_rx0_tdata[63:56]};
+					filter_parm_dns      <= {s_axis_rx1_tdata[ 7: 0],
+					                         s_axis_rx1_tdata[15: 8]};
+					filter_qcnt_dns      <= {s_axis_rx1_tdata[23:16],
+					                         s_axis_rx1_tdata[31:24]};
+					filter_acnt_dns      <= {s_axis_rx1_tdata[39:32],
+					                         s_axis_rx1_tdata[47:40]};
+					filter_auth_dns      <= {s_axis_rx1_tdata[55:48],
+					                         s_axis_rx1_tdata[63:56]};
 				end
 				default : ;
 			endcase
-			/* Debug Logic */
-			if (rx_ftype == ETH_FTYPE_IP && 
-					rx_ip_proto  == IP_PROTO_UDP  &&
-					rx_dst_uport == DNS_SERV_PORT &&
-					s_axis_rx0_tlast)
-				hit_cnt[3:0] <= hit_cnt[3:0] + 1;
-			if (filter_mode)
-				hit_cnt[4]  <= 1;
-			if (suspect_mode)
-				hit_cnt[5]  <= 1;
-			if (suspect_mode && suspect_parm_dns[0] == DNS_PARAM_RESPONSE &&
-				rx_cnt == 10'd6) begin
-				db_op <= 4'b0011;
-				hit_cnt[6] <= 1;
-			end
 			if (filter_mode && filter_parm_dns[0] == DNS_PARAM_RESPONSE &&
-				rx_cnt == 10'd10) begin
-				db_op <= 4'b0101;
+				rx_cnt1 == 10'd10) begin
+				db_op1 <= 4'b0101;
 				hit_cnt[7] <= 1;
 			end
 		end
@@ -430,19 +483,21 @@ always @ (posedge clk156) begin
 end
 
 
-wire [1:0] status = db_op[2:1];
-assign in_flag = db_op;
-assign in_valid = (suspect_mode && rx_cnt == 10'd7) || 
-                  (filter_mode  && rx_cnt == 10'd11);
+wire [1:0] status = suspect_mode ? db_op0[2:1] : 
+                    filter_mode  ? db_op1[2:1] : 2'd0;
+assign in_flag = suspect_mode ? db_op0 : 
+                 filter_mode  ? db_op1 : 4'd0;
+assign in_valid = (suspect_mode && rx_cnt0 == 10'd7) || 
+                  (filter_mode  && rx_cnt1 == 10'd11);
 
 //assign in_key = (status == STATUS_SUSPECT) ? {rx_src_ip, rx_dst_ip, 
 //                                              rx_dst_uport , 16'd0}  :
 //                (status == STATUS_ARREST)  ? {filter_src_ip, filter_dst_ip, 
 //                                              filter_dst_udp, 16'd0} : 0;
-assign in_key = (suspect_mode) ? {rx_src_ip, rx_dst_ip, 
-                                              rx_dst_uport , 16'd0}  :
+assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
+                                  rx0_dst_uport , 16'd0}  :
                 (filter_mode)  ? {filter_src_ip, filter_dst_ip, 
-                                              filter_dst_udp, 16'd0} : 0;
+                                  filter_dst_udp, 16'd0} : 0;
 
 assign debug = hit_cnt;
 
@@ -493,38 +548,23 @@ axis_data_fifo_0 u_axis_data_fifo1 (
   .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
 );
 
-
-
-//`ifdef SIMULATION_ILA
 /*
- *  ILA core instance
+ * DEBUG
  */
 
-//reg        tready_ila;
-//reg        tvalid_ila;
-//reg [63:0] tdata_ila;
-//reg [ 7:0] tkeep_ila;
-//reg        tlast_ila;
-//reg        tuser_ila;
-//always @ (posedge clk156) begin
-//	tready_ila <= m_axis_tready;
-//	tvalid_ila <= s_axis_tvalid;
-//	tdata_ila <= s_axis_rx0_tdata;
-//	tkeep_ila <= s_axis_tkeep;
-//	tlast_ila <= s_axis_tlast;
-//	tuser_ila <= s_axis_tuser;
-//end
 
 ila_0 inst_ila (
 	.clk     (clk156), // input wire clk
 	.probe0  ({ // 256pin
 		//126'd0          ,
 		in_key[95:0]    ,//96
-		rx_ip_proto     ,// 8
-		rx_icmp_type    ,// 8
-		rx_icmp_code    ,// 8
+		rx0_ip_proto     ,// 8
+		rx1_ip_proto     ,// 8
+		rx1_icmp_type    ,// 8
+		rx1_icmp_code    ,// 8
 		in_valid        ,// 1
-		rx_cnt          ,//10
+		rx_cnt0          ,//10
+		rx_cnt1          ,//10
 		filter_block    ,// 1
 		suspect_mode    ,// 1
 		filter_mode     ,// 1
@@ -532,7 +572,6 @@ ila_0 inst_ila (
 	}) // input wire [75:0] probe0
 );
 
-//`endif /* SIMULATION_ILA */
 
 endmodule
 
