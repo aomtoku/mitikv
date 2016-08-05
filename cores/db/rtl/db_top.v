@@ -43,10 +43,10 @@ localparam SUSPECTION = 1,
            ARREST     = 2,
            FILTERED   = 3,
            EXPIRED    = 4;
+
 /*
  * Hash Function for Indexing
  */
-
 wire [31:0] hash;
 crc32 u_hashf (
   .data_in    (in_key),
@@ -55,6 +55,25 @@ crc32 u_hashf (
   .rst        (rst),
   .clk        (clk) 
 );
+
+reg [KEY_SIZE-1:0] key_reg;
+reg                valid_reg;
+reg                hash_reg;
+reg [3:0]          flag_reg;
+
+always @ (posedge clk)
+	if (rst) begin
+		key_reg   <= 0;
+		valid_reg <= 0;
+		hash_reg  <= 0;
+		flag_reg  <= 0;
+	end else begin
+		key_reg   <= in_key;
+		valid_reg <= in_valid;
+		flag_geg  <= in_flag;
+		if (in_valid) 
+			hash_reg <= hash;
+	end
 
 db_cont #(
 	.HASH_SIZE    (32),
@@ -70,10 +89,10 @@ db_cont #(
 	.rst          (rst),
 
 	/* Network Interface side */
-	.in_valid     (in_valid),
-	.in_op        (in_flag),
-	.in_hash      (hash),
-	.in_key       (in_key),
+	.in_valid     (valid_reg),
+	.in_op        (flag_reg),
+	.in_hash      (hash_reg),
+	.in_key       (key_reg),
 	.in_value     (), 
 
 	.out_valid    (out_valid),
