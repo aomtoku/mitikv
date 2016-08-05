@@ -47,19 +47,21 @@ localparam SUSPECTION = 1,
 /*
  * Hash Function for Indexing
  */
-wire [31:0] hash;
+reg  [KEY_SIZE-1:0] key_reg;
+reg                 valid_reg;
+reg                 hash_reg;
+reg  [3:0]          flag_reg;
+wire [31:0]         hash;
+wire                crc_rst = valid_reg;
+
 crc32 u_hashf (
   .data_in    (in_key),
   .crc_en     (in_valid),
   .crc_out    (hash),
-  .rst        (rst),
+  .rst        (rst | crc_rst),
   .clk        (clk) 
 );
 
-reg [KEY_SIZE-1:0] key_reg;
-reg                valid_reg;
-reg                hash_reg;
-reg [3:0]          flag_reg;
 
 always @ (posedge clk)
 	if (rst) begin
