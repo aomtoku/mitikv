@@ -118,8 +118,7 @@ assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1
 wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
                     rx1_ip_proto  == IP_PROTO_ICMP     &&
                     rx1_icmp_type == ICMP_DEST_UNREACH &&
-                    rx1_icmp_code == ICMP_PORT_UNREACH &&
-					filter_dst_udp== DNS_SERV_PORT; 
+                    rx1_icmp_code == ICMP_PORT_UNREACH ;
 wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_ip_proto  == IP_PROTO_UDP      &&
                     rx0_src_uport == DNS_SERV_PORT;
@@ -394,7 +393,8 @@ wire [1:0] status = suspect_mode ? db_op0[2:1] :
 assign in_flag    = suspect_mode ? db_op0 : 
                     filter_mode  ? db_op1 : 4'd0;
 assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) || 
-                    (filter_mode  && rx_cnt1 == 10'd11);
+                    (filter_mode  && rx_cnt1 == 10'd11 && 
+                     filter_dst_udp == DNS_SERV_PORT);
 
 assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
                                   rx0_dst_uport , 16'd0}  :
