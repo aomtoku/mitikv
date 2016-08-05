@@ -394,7 +394,7 @@ assign in_flag    = suspect_mode ? db_op0 :
                     filter_mode  ? db_op1 : 4'd0;
 assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) || 
                     (filter_mode  && rx_cnt1 == 10'd11 && 
-                     filter_dst_udp == DNS_SERV_PORT);
+                     filter_src_udp == DNS_SERV_PORT);
 
 assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
                                   rx0_dst_uport , 16'd0}  :
@@ -470,6 +470,7 @@ ila_0 inst_ila (
 		filter_block    ,// 1
 		suspect_mode    ,// 1
 		filter_dst_udp  ,
+		filter_src_udp  ,
 		filter_mode     ,// 1
 		db_op            // 4
 	})
