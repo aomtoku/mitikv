@@ -457,6 +457,7 @@ axis_data_fifo_0 u_axis_data_fifo1 (
 
 ila_0 inst_ila (
 	.clk     (clk156), // input wire clk
+	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
 		//126'd0          ,
 		in_key[95:0]    ,//96
@@ -472,8 +473,8 @@ ila_0 inst_ila (
 		filter_dst_udp  ,
 		filter_src_udp  ,
 		filter_mode     ,// 1
-		db_op            // 4
-	})
+		db_op0           // 4
+	})/* verilator lint_on WIDTH */ 
 );
 
 

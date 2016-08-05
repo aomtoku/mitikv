@@ -49,7 +49,7 @@ localparam SUSPECTION = 1,
  */
 reg  [KEY_SIZE-1:0] key_reg;
 reg                 valid_reg;
-reg                 hash_reg;
+reg  [31:0]         hash_reg;
 reg  [3:0]          flag_reg;
 wire [31:0]         hash;
 wire                crc_rst = valid_reg;
@@ -72,7 +72,7 @@ always @ (posedge clk)
 	end else begin
 		key_reg   <= in_key;
 		valid_reg <= in_valid;
-		flag_geg  <= in_flag;
+		flag_reg  <= in_flag;
 		if (in_valid) 
 			hash_reg <= hash;
 	end

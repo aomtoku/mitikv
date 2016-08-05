@@ -258,7 +258,7 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 	.areset_coreclk               (areset_coreclk), 
 	.txusrclk                     (txusrclk),       
 	.txusrclk2                    (txusrclk2),      
-	.txoutclk                     (txoutclk),       
+	.txoutclk                     (),       
 	.txuserrdy                    (txuserrdy),      
 	.tx_resetdone                 (),          
 	.rx_resetdone                 (),          

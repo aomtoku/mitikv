@@ -163,4 +163,25 @@ always @ (posedge clk)
 		endcase
 	end
 
+ila_0 u_ila (
+	.clk     (clk), // input wire clk
+	/* verilator lint_off WIDTH */
+	.probe0  ({ // 256pin
+		//126'd0          ,
+		in_valid     ,// 1
+		in_op        ,// 4
+		//in_hash      ,
+		//in_key       ,
+		//in_value     ,
+	    out_valid    ,// 1
+	    out_flag     ,// 4
+	    out_value    ,//32
+		state        ,// 2
+		fetched_key  ,//96
+		fetched_flag ,// 4
+		fetched_val  ,//32
+		hash          //32
+	})
+	/* verilator lint_on WIDTH */
+);
 endmodule
