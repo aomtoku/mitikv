@@ -50,91 +50,6 @@ reg [15:0] tx_count, tx_count_next;
 reg [ 1:0] tx_state, tx_state_next;
 reg [15:0] wait_cnt, wait_cnt_next;
 
-//always @ (posedge clk156) begin
-//	if (eth_rst) begin
-//		tx_state <= TX_IDLE;
-//		tx_count <= 0;
-//		wait_cnt <= 0;
-//	end else begin
-//		tx_state <= tx_state_next;
-//		tx_count <= tx_count_next;
-//		wait_cnt <= wait_cnt_next;
-//	end
-//end
-//
-//always @ (*) begin
-//	tx_state_next = tx_state;
-//	tx_count_next = tx_count;
-//	wait_cnt_next = wait_cnt;
-//
-//	case(tx_state)
-//		TX_IDLE: begin
-//			if (m_axis_tready) begin
-//				tx_state_next = TX_HDR;
-//				tx_count_next = 0;
-//			end
-//		end
-//		TX_HDR: begin
-//			if (m_axis_tready) begin
-//				tx_count_next = tx_count + 1;
-//				if (tx_count == 9) begin
-//					tx_state_next = TX_WAIT;
-//				end
-//			end
-//		end
-//		TX_DATA: begin
-//			if (m_axis_tready && m_axis_tlast) begin
-//				tx_state_next = TX_WAIT;
-//			end else if (m_axis_tready) begin
-//				tx_count_next = tx_count + 1;
-//			end
-//		end
-//		TX_WAIT: begin
-//			wait_cnt_next = wait_cnt + 1;
-//			if (wait_cnt == 16'hffff) begin
-//				tx_state_next = TX_IDLE;
-//				wait_cnt_next = 16'h0000;
-//			end
-//		end
-//		default: tx_state_next = TX_IDLE;
-//	endcase
-//end
-//
-//assign m_axis_tkeep = (tx_state == TX_HDR) ? 8'b1111_1111 : 8'b0000_0000;
-
-//always @ (*) begin
-//	if (tx_state == TX_HDR) begin
-//		case (tx_count)
-//			default: m_axis_tkeep = 8'b1111_1111;
-//		endcase
-//	end else if (tx_state == TX_DATA) begin
-//		m_axis_tkeep = 8'b1111_1111;//dout[73:66];
-//	end
-//end
-
-//always @ (*) begin
-//	m_axis_tdata = 64'd0;
-//	if (tx_state == TX_HDR) begin
-//		case (tx_count)
-//			16'h0: m_axis_tdata = 64'h11_00_d1_91_5d_ba_e2_90;
-//			16'h1: m_axis_tdata = 64'h00_45_00_08_55_44_33_22;
-//			16'h2: m_axis_tdata = 64'h11_40_00_00_00_00_2e_00;
-//			16'h3: m_axis_tdata = 64'ha8_c0_01_64_a8_c0_62_31;
-//			16'h4: m_axis_tdata = 64'h1a_00_76_37_76_37_0b_64;
-//			16'h5: m_axis_tdata = 64'h3d_00_00_00_00_20_00_00;
-//			16'h6: m_axis_tdata = 64'hFF_FF_FF_FF_FF_FF_FF_FF;
-//			16'h7: m_axis_tdata = 64'h00_40_00_C0_00_00_00_00;
-//			16'h8: m_axis_tdata = 64'h01_08_00_00_00_00_70_00;
-//			16'h9: m_axis_tdata = 64'haa_aa_aa_aa_00_00_00_00;
-//			default: m_axis_tdata = 64'h22222222_00000000;
-//		endcase
-//	end 
-//end
-//
-//assign m_axis_tlast  = (tx_state == TX_HDR && tx_count == 9);
-//assign m_axis_tuser  = 1'b0;
-//assign m_axis_tvalid = (tx_state == TX_HDR || tx_state == TX_DATA);
-
 /*
  *  RX path
  */
@@ -474,7 +389,6 @@ always @ (posedge clk156) begin
 	end
 end
 
-
 wire [1:0] status = suspect_mode ? db_op0[2:1] : 
                     filter_mode  ? db_op1[2:1] : 2'd0;
 assign in_flag    = suspect_mode ? db_op0 : 
@@ -482,10 +396,6 @@ assign in_flag    = suspect_mode ? db_op0 :
 assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) || 
                     (filter_mode  && rx_cnt1 == 10'd11);
 
-//assign in_key = (status == STATUS_SUSPECT) ? {rx_src_ip, rx_dst_ip, 
-//                                              rx_dst_uport , 16'd0}  :
-//                (status == STATUS_ARREST)  ? {filter_src_ip, filter_dst_ip, 
-//                                              filter_dst_udp, 16'd0} : 0;
 assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
                                   rx0_dst_uport , 16'd0}  :
                 (filter_mode)  ? {filter_src_ip, filter_dst_ip, 
@@ -497,47 +407,47 @@ assign debug = hit_cnt;
  * Loopback FIFO for packet mode
  */
 axis_data_fifo_0 u_axis_data_fifo0 (
-  .s_axis_aresetn      (!eth_rst),     // input wire s_axis_aresetn
-  .s_axis_aclk         (clk156),       // input wire s_axis_aclk
+  .s_axis_aresetn      (!eth_rst),  
+  .s_axis_aclk         (clk156),  
 
-  .s_axis_tvalid       (p0_axis_tvalid),// input wire s_axis_tvalid
-  .s_axis_tready       (),             // te s_axis_tready
-  .s_axis_tdata        (p0_axis_tdata), // input wire [63 : 0] s_axis_rx0_tdata
-  .s_axis_tkeep        (p0_axis_tkeep), // input wire [7 : 0] s_axis_tkeep
-  .s_axis_tlast        (p0_axis_tlast), // input wire s_axis_tlast
-  .s_axis_tuser        (1'b0), // input wire [0 : 0] s_axis_tuser
+  .s_axis_tvalid       (p0_axis_tvalid),
+  .s_axis_tready       (),              
+  .s_axis_tdata        (p0_axis_tdata), 
+  .s_axis_tkeep        (p0_axis_tkeep), 
+  .s_axis_tlast        (p0_axis_tlast), 
+  .s_axis_tuser        (1'b0),          
 
-  .m_axis_tvalid       (m_axis_tx0_tvalid),// output wire m_axis_tvalid
-  .m_axis_tready       (m_axis_tx0_tready),// input wire m_axis_tready
-  .m_axis_tdata        (m_axis_tx0_tdata), // output wire [63 : 0] m_axis_tdata
-  .m_axis_tkeep        (m_axis_tx0_tkeep), // output wire [7 : 0] m_axis_tkeep
-  .m_axis_tlast        (m_axis_tx0_tlast), // output wire m_axis_tlast
-  .m_axis_tuser        (m_axis_tx0_tuser), // output wire [0 : 0] m_axis_tuser
-  .axis_data_count     (),        // output wire [31 : 0] axis_data_count
-  .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
-  .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
+  .m_axis_tvalid       (m_axis_tx0_tvalid),
+  .m_axis_tready       (m_axis_tx0_tready),
+  .m_axis_tdata        (m_axis_tx0_tdata), 
+  .m_axis_tkeep        (m_axis_tx0_tkeep), 
+  .m_axis_tlast        (m_axis_tx0_tlast), 
+  .m_axis_tuser        (m_axis_tx0_tuser), 
+  .axis_data_count     (), 
+  .axis_wr_data_count  (), 
+  .axis_rd_data_count  ()  
 );
 
 axis_data_fifo_0 u_axis_data_fifo1 (
-  .s_axis_aresetn      (!eth_rst),     // input wire s_axis_aresetn
-  .s_axis_aclk         (clk156),       // input wire s_axis_aclk
+  .s_axis_aresetn      (!eth_rst),   
+  .s_axis_aclk         (clk156), 
 
-  .s_axis_tvalid       (p1_axis_tvalid),// input wire s_axis_tvalid
-  .s_axis_tready       (),             // te s_axis_tready
-  .s_axis_tdata        (p1_axis_tdata), // input wire [63 : 0] s_axis_rx0_tdata
-  .s_axis_tkeep        (p1_axis_tkeep), // input wire [7 : 0] s_axis_tkeep
-  .s_axis_tlast        (p1_axis_tlast), // input wire s_axis_tlast
-  .s_axis_tuser        (1'b0), // input wire [0 : 0] s_axis_tuser
+  .s_axis_tvalid       (p1_axis_tvalid),
+  .s_axis_tready       (),              
+  .s_axis_tdata        (p1_axis_tdata), 
+  .s_axis_tkeep        (p1_axis_tkeep), 
+  .s_axis_tlast        (p1_axis_tlast), 
+  .s_axis_tuser        (1'b0),          
 
-  .m_axis_tvalid       (m_axis_tx1_tvalid),// output wire m_axis_tvalid
-  .m_axis_tready       (m_axis_tx1_tready),// input wire m_axis_tready
-  .m_axis_tdata        (m_axis_tx1_tdata), // output wire [63 : 0] m_axis_tdata
-  .m_axis_tkeep        (m_axis_tx1_tkeep), // output wire [7 : 0] m_axis_tkeep
-  .m_axis_tlast        (m_axis_tx1_tlast), // output wire m_axis_tlast
-  .m_axis_tuser        (m_axis_tx1_tuser), // output wire [0 : 0] m_axis_tuser
-  .axis_data_count     (),        // output wire [31 : 0] axis_data_count
-  .axis_wr_data_count  (),  // output wire [31 : 0] axis_wr_data_count
-  .axis_rd_data_count  ()  // output wire [31 : 0] axis_rd_data_count
+  .m_axis_tvalid       (m_axis_tx1_tvalid),
+  .m_axis_tready       (m_axis_tx1_tready),
+  .m_axis_tdata        (m_axis_tx1_tdata), 
+  .m_axis_tkeep        (m_axis_tx1_tkeep), 
+  .m_axis_tlast        (m_axis_tx1_tlast), 
+  .m_axis_tuser        (m_axis_tx1_tuser), 
+  .axis_data_count     (),                 
+  .axis_wr_data_count  (),                 
+  .axis_rd_data_count  ()                  
 );
 
 /*
@@ -562,7 +472,7 @@ ila_0 inst_ila (
 		filter_dst_udp  ,
 		filter_mode     ,// 1
 		db_op            // 4
-	}) // input wire [75:0] probe0
+	})
 );
 
 
