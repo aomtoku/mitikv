@@ -19,6 +19,10 @@ wire ETH0_RX_P;
 wire ETH0_RX_N;
 wire ETH0_TX_DISABLE;
 
+wire ETH1_RX_P;
+wire ETH1_RX_N;
+wire ETH1_TX_DISABLE;
+
 wire sys_rst = cold_reset;
 
 /*
@@ -50,19 +54,28 @@ eth_top eth0_top (
 	.SFP_REC_CLK_P      (SFP_REC_CLK_P),
 	.SFP_REC_CLK_N      (SFP_REC_CLK_N),
 
-	.ETH0_TX_P          (1'b0),
-	.ETH0_TX_N          (1'b0),
-	.ETH0_RX_P          (ETH0_RX_P),
-	.ETH0_RX_N          (ETH0_RX_N),
-
 	.I2C_FPGA_SCL       (1'b0),
 	.I2C_FPGA_SDA       (1'b0),
 
 	.SFP_CLK_ALARM_B    (1'b0),
 
+	.ETH0_TX_P          (1'b0),
+	.ETH0_TX_N          (1'b0),
+	.ETH0_RX_P          (ETH0_RX_P),
+	.ETH0_RX_N          (ETH0_RX_N),
+
 	.ETH0_TX_FAULT      (1'b0),
 	.ETH0_RX_LOS        (1'b0),
-	.ETH0_TX_DISABLE    (ETH0_TX_DISABLE) 
+	.ETH0_TX_DISABLE    (ETH0_TX_DISABLE), 
+
+	.ETH1_TX_P          (1'b0),
+	.ETH1_TX_N          (1'b0),
+	.ETH1_RX_P          (ETH1_RX_P),
+	.ETH1_RX_N          (ETH1_RX_N),
+
+	.ETH1_TX_FAULT      (1'b0),
+	.ETH1_RX_LOS        (1'b0),
+	.ETH1_TX_DISABLE    (ETH1_TX_DISABLE) 
 );
 
 db_top db_top0 (
