@@ -203,7 +203,8 @@ assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1
 wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
                     rx1_ip_proto  == IP_PROTO_ICMP     &&
                     rx1_icmp_type == ICMP_DEST_UNREACH &&
-                    rx1_icmp_code == ICMP_PORT_UNREACH;
+                    rx1_icmp_code == ICMP_PORT_UNREACH &&
+					filter_dst_udp== DNS_SERV_PORT; 
 wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_ip_proto  == IP_PROTO_UDP      &&
                     rx0_src_uport == DNS_SERV_PORT;
@@ -293,14 +294,6 @@ always @ (posedge clk156) begin
 			pipe_stg0_5 <= 0;
 			pipe_stg0_6 <= 0;
 			pipe_stg0_7 <= 0;
-			pipe_stg1_0 <= 0;
-			pipe_stg1_1 <= 0;
-			pipe_stg1_2 <= 0;
-			pipe_stg1_3 <= 0;
-			pipe_stg1_4 <= 0;
-			pipe_stg1_5 <= 0;
-			pipe_stg1_6 <= 0;
-			pipe_stg1_7 <= 0;
 		end
 
 		/* DB reply */
@@ -412,7 +405,6 @@ always @ (posedge clk156) begin
 					filter_acnt_dns  <= 0; 
 					filter_auth_dns  <= 0;
 					db_op1           <= 0;
-					filtered         <= 0;
 				end
 				1: rx1_ftype <= {s_axis_rx1_tdata[39:32], s_axis_rx1_tdata[47:40]};
 				2: rx1_ip_proto <= s_axis_rx1_tdata[63:56];
@@ -485,10 +477,10 @@ end
 
 wire [1:0] status = suspect_mode ? db_op0[2:1] : 
                     filter_mode  ? db_op1[2:1] : 2'd0;
-assign in_flag = suspect_mode ? db_op0 : 
-                 filter_mode  ? db_op1 : 4'd0;
-assign in_valid = (suspect_mode && rx_cnt0 == 10'd7) || 
-                  (filter_mode  && rx_cnt1 == 10'd11);
+assign in_flag    = suspect_mode ? db_op0 : 
+                    filter_mode  ? db_op1 : 4'd0;
+assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) || 
+                    (filter_mode  && rx_cnt1 == 10'd11);
 
 //assign in_key = (status == STATUS_SUSPECT) ? {rx_src_ip, rx_dst_ip, 
 //                                              rx_dst_uport , 16'd0}  :
@@ -558,15 +550,16 @@ ila_0 inst_ila (
 	.probe0  ({ // 256pin
 		//126'd0          ,
 		in_key[95:0]    ,//96
-		rx0_ip_proto     ,// 8
-		rx1_ip_proto     ,// 8
-		rx1_icmp_type    ,// 8
-		rx1_icmp_code    ,// 8
+		rx0_ip_proto    ,// 8
+		rx1_ip_proto    ,// 8
+		rx1_icmp_type   ,// 8
+		rx1_icmp_code   ,// 8
 		in_valid        ,// 1
-		rx_cnt0          ,//10
-		rx_cnt1          ,//10
+		rx_cnt0         ,//10
+		rx_cnt1         ,//10
 		filter_block    ,// 1
 		suspect_mode    ,// 1
+		filter_dst_udp  ,
 		filter_mode     ,// 1
 		db_op            // 4
 	}) // input wire [75:0] probe0
