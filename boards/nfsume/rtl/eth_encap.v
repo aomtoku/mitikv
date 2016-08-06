@@ -100,12 +100,13 @@ reg [3:0] db_op0, db_op1;
 /* pipelined stages */
 reg  [1+1+8+64-1:0] pipe_stg0_0, pipe_stg0_1, pipe_stg0_2, pipe_stg0_3;
 reg  [1+1+8+64-1:0] pipe_stg0_4, pipe_stg0_5, pipe_stg0_6, pipe_stg0_7;
+reg  [1+1+8+64-1:0] pipe_stg0_8, pipe_stg0_9, pipe_stg0_a, pipe_stg0_b;
 wire [1+1+8+64-1:0] pipe_in_stage0 = {s_axis_rx0_tvalid, s_axis_rx0_tdata, 
 						s_axis_rx0_tkeep, s_axis_rx0_tlast}; 
 wire        p0_axis_tvalid, p0_axis_tlast;
 wire [ 7:0] p0_axis_tkeep;
 wire [63:0] p0_axis_tdata;
-assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0_7;
+assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0_b;
 
 //reg  [1+1+8+64-1:0] pipe_stg1_0, pipe_stg1_1, pipe_stg1_2, pipe_stg1_3;
 //reg  [1+1+8+64-1:0] pipe_stg1_4, pipe_stg1_5, pipe_stg1_6, pipe_stg1_7;
@@ -173,6 +174,10 @@ always @ (posedge clk156) begin
 		pipe_stg0_5      <= 0;
 		pipe_stg0_6      <= 0;
 		pipe_stg0_7      <= 0;
+		pipe_stg0_8      <= 0;
+		pipe_stg0_9      <= 0;
+		pipe_stg0_a      <= 0;
+		pipe_stg0_b      <= 0;
 		//pipe_stg1_0      <= 0;
 		//pipe_stg1_1      <= 0;
 		//pipe_stg1_2      <= 0;
@@ -200,6 +205,10 @@ always @ (posedge clk156) begin
 			pipe_stg0_5 <= pipe_stg0_4;
 			pipe_stg0_6 <= pipe_stg0_5;
 			pipe_stg0_7 <= pipe_stg0_6;
+			pipe_stg0_8 <= pipe_stg0_7;
+			pipe_stg0_9 <= pipe_stg0_8;
+			pipe_stg0_a <= pipe_stg0_9;
+			pipe_stg0_b <= pipe_stg0_a;
 		end else begin // Zero is inserted in regs.
 			pipe_stg0_1 <= 0;
 			pipe_stg0_2 <= 0;
@@ -208,6 +217,10 @@ always @ (posedge clk156) begin
 			pipe_stg0_5 <= 0;
 			pipe_stg0_6 <= 0;
 			pipe_stg0_7 <= 0;
+			pipe_stg0_8 <= 0;
+			pipe_stg0_9 <= 0;
+			pipe_stg0_a <= 0;
+			pipe_stg0_b <= 0;
 		end
 
 		/* DB reply */
