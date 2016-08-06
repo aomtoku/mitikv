@@ -124,7 +124,7 @@ db_top #(
 	.KEY_SIZE(96),
 	.VAL_SIZE(32),
 	.RAM_SIZE(4),
-	.RAM_ADDR(2)
+	.RAM_ADDR(10)
 ) u_db_top (
 	.clk              (db_clk),
 	.rst              (sys_rst), 
