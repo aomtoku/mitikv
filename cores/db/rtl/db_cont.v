@@ -3,11 +3,9 @@ module db_cont #(
 	parameter KEY_SIZE    = 96, // 80bit + 32bit
 	parameter VAL_SIZE    = 32,
 	parameter FLAG_SIZE   =  4,
-	parameter RAM_ADDR    = 22,
+	parameter RAM_ADDR    = 10,
 	parameter RAM_DWIDTH  = 32,
 	parameter RAM_SIZE    = 1024
-	
-
 )(
 	/* System Interface */
 	input  wire  clk,
@@ -76,6 +74,7 @@ BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
  */
 // HashTable 0x0000_0000--0x0000_ffff
 wire [HASH_SIZE-1:0] hash = ( in_hash & 32'h3FF );
+wire [RAM_ADDR-1:0] hash_addr = hash[RAM_ADDR-1:0];
 
 localparam IDLE   = 0,
            CHECK  = 1,
@@ -90,7 +89,8 @@ reg                judge;
 reg [KEY_SIZE-1:0] KEY [RAM_SIZE-1:0];
 reg [VAL_SIZE-1:0] VAL [RAM_SIZE-1:0];
 
-wire [1:0] fetched_flag = fetched_val[26:25];
+wire [3:0] fetched_flag = fetched_val[27:24];
+wire [1:0] fetched_state = fetched_val[26:25];
 
 always @ (posedge clk)
 	if (rst) begin
@@ -114,28 +114,28 @@ always @ (posedge clk)
 				out_valid <= 0;
 				out_flag  <= 0;
 				if (in_valid) begin
-					fetched_key <= KEY[hash];
-					fetched_val <= VAL[hash];
-					if (in_key == KEY[hash]) 
+					fetched_key <= KEY[hash_addr];
+					fetched_val <= VAL[hash_addr];
+					if (in_key == KEY[hash_addr]) 
 						state <= CHECK;
 					else
 						state <= MISS;
 				end
 			end
 			CHECK : if (fetched_val[15:0] > sys_cnt[15:0]) begin
-				// Okay?
+				// Time is Okay
 				judge <= 0;
 				if (in_op[0] == SET_REQ)
 					state <= UPDATE;
 				else
 					state <= IDLE;
-			end else begin
+			end else begin  // Time is Expired
 				if (in_op[0] == SET_REQ) begin
 					state <= UPDATE;
 					case (in_op[2:1])
 						IDLE_STATE   : state <= IDLE;
 						SUSPECT_STATE: begin
-							if (fetched_flag[1] == 0)
+							if (fetched_state[1] == 0)
 								state <= UPDATE;
 							else
 								state <= IDLE;
@@ -155,8 +155,11 @@ always @ (posedge clk)
 			else // in_op == GET
 				state <= IDLE;
 			UPDATE: begin
-				KEY[hash] <= in_key;
-				VAL[hash] <= {4'd0, in_op, 8'd0, sys_cnt[15:0]};
+				KEY[hash_addr] <= in_key;
+				if (fetched_state == ARREST_STATE)
+					VAL[hash_addr] <= {4'd0, fetched_flag, 8'd0, sys_cnt[15:0]};
+				else
+					VAL[hash_addr] <= {4'd0, in_op, 8'd0, sys_cnt[15:0]};
 				state <= IDLE;
 			end
 			default : state <= IDLE;
@@ -167,12 +170,12 @@ ila_0 u_ila (
 	.clk     (clk), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
-		//126'd0          ,
-		in_valid     ,// 1
-		in_op        ,// 4
+		//126'd0       ,
 		//in_hash      ,
 		//in_key       ,
 		//in_value     ,
+		in_valid     ,// 1
+		in_op        ,// 4
 	    out_valid    ,// 1
 	    out_flag     ,// 4
 	    out_value    ,//32

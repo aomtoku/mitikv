@@ -107,14 +107,14 @@ wire [ 7:0] p0_axis_tkeep;
 wire [63:0] p0_axis_tdata;
 assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0_7;
 
-reg  [1+1+8+64-1:0] pipe_stg1_0, pipe_stg1_1, pipe_stg1_2, pipe_stg1_3;
-reg  [1+1+8+64-1:0] pipe_stg1_4, pipe_stg1_5, pipe_stg1_6, pipe_stg1_7;
-wire [1+1+8+64-1:0] pipe_in_stage1 = {s_axis_rx1_tvalid, s_axis_rx1_tdata, 
-						s_axis_rx1_tkeep, s_axis_rx1_tlast}; 
-wire        p1_axis_tvalid, p1_axis_tlast;
-wire [ 7:0] p1_axis_tkeep;
-wire [63:0] p1_axis_tdata;
-assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
+//reg  [1+1+8+64-1:0] pipe_stg1_0, pipe_stg1_1, pipe_stg1_2, pipe_stg1_3;
+//reg  [1+1+8+64-1:0] pipe_stg1_4, pipe_stg1_5, pipe_stg1_6, pipe_stg1_7;
+//wire [1+1+8+64-1:0] pipe_in_stage1 = {s_axis_rx1_tvalid, s_axis_rx1_tdata, 
+//						s_axis_rx1_tkeep, s_axis_rx1_tlast}; 
+//wire        p1_axis_tvalid, p1_axis_tlast;
+//wire [ 7:0] p1_axis_tkeep;
+//wire [63:0] p1_axis_tdata;
+//assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
 wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
                     rx1_ip_proto  == IP_PROTO_ICMP     &&
                     rx1_icmp_type == ICMP_DEST_UNREACH &&
@@ -173,18 +173,25 @@ always @ (posedge clk156) begin
 		pipe_stg0_5      <= 0;
 		pipe_stg0_6      <= 0;
 		pipe_stg0_7      <= 0;
-		pipe_stg1_0      <= 0;
-		pipe_stg1_1      <= 0;
-		pipe_stg1_2      <= 0;
-		pipe_stg1_3      <= 0;
-		pipe_stg1_4      <= 0;
-		pipe_stg1_5      <= 0;
-		pipe_stg1_6      <= 0;
-		pipe_stg1_7      <= 0;
+		//pipe_stg1_0      <= 0;
+		//pipe_stg1_1      <= 0;
+		//pipe_stg1_2      <= 0;
+		//pipe_stg1_3      <= 0;
+		//pipe_stg1_4      <= 0;
+		//pipe_stg1_5      <= 0;
+		//pipe_stg1_6      <= 0;
+		//pipe_stg1_7      <= 0;
 	end else begin
 		/* Pipelining  */
 		pipe_stg0_0 <= pipe_in_stage0;
-		pipe_stg1_0 <= pipe_in_stage1;
+		//pipe_stg1_0 <= pipe_in_stage1;
+		//pipe_stg1_1 <= pipe_stg1_0;
+		//pipe_stg1_2 <= pipe_stg1_1;
+		//pipe_stg1_3 <= pipe_stg1_2;
+		//pipe_stg1_4 <= pipe_stg1_3;
+		//pipe_stg1_5 <= pipe_stg1_4;
+		//pipe_stg1_6 <= pipe_stg1_5;
+		//pipe_stg1_7 <= pipe_stg1_6;
 		if (!filter_block) begin
 			pipe_stg0_1 <= pipe_stg0_0;
 			pipe_stg0_2 <= pipe_stg0_1;
@@ -193,13 +200,6 @@ always @ (posedge clk156) begin
 			pipe_stg0_5 <= pipe_stg0_4;
 			pipe_stg0_6 <= pipe_stg0_5;
 			pipe_stg0_7 <= pipe_stg0_6;
-			pipe_stg1_1 <= pipe_stg1_0;
-			pipe_stg1_2 <= pipe_stg1_1;
-			pipe_stg1_3 <= pipe_stg1_2;
-			pipe_stg1_4 <= pipe_stg1_3;
-			pipe_stg1_5 <= pipe_stg1_4;
-			pipe_stg1_6 <= pipe_stg1_5;
-			pipe_stg1_7 <= pipe_stg1_6;
 		end else begin // Zero is inserted in regs.
 			pipe_stg0_1 <= 0;
 			pipe_stg0_2 <= 0;
@@ -379,7 +379,8 @@ always @ (posedge clk156) begin
 				end
 				default : ;
 			endcase
-			if (filter_mode && filter_parm_dns[0] == DNS_PARAM_RESPONSE &&
+			if (filter_mode && filter_src_udp == DNS_SERV_PORT &&
+				//filter_parm_dns[0] == DNS_PARAM_RESPONSE &&
 				rx_cnt1 == 10'd10) begin
 				db_op1 <= 4'b0101;
 				hit_cnt[7] <= 1;
@@ -432,11 +433,11 @@ axis_data_fifo_0 u_axis_data_fifo1 (
   .s_axis_aresetn      (!eth_rst),   
   .s_axis_aclk         (clk156), 
 
-  .s_axis_tvalid       (p1_axis_tvalid),
+  .s_axis_tvalid       (s_axis_rx1_tvalid),
   .s_axis_tready       (),              
-  .s_axis_tdata        (p1_axis_tdata), 
-  .s_axis_tkeep        (p1_axis_tkeep), 
-  .s_axis_tlast        (p1_axis_tlast), 
+  .s_axis_tdata        (s_axis_rx1_tdata), 
+  .s_axis_tkeep        (s_axis_rx1_tkeep), 
+  .s_axis_tlast        (s_axis_rx1_tlast), 
   .s_axis_tuser        (1'b0),          
 
   .m_axis_tvalid       (m_axis_tx1_tvalid),
