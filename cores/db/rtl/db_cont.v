@@ -86,9 +86,6 @@ reg [KEY_SIZE-1:0] fetched_key;
 reg [VAL_SIZE-1:0] fetched_val, get_val;
 reg                judge;
 /* Hash Table & Data Store */
-//reg [KEY_SIZE-1:0] KEY [RAM_SIZE-1:0];
-//reg [VAL_SIZE-1:0] VAL [RAM_SIZE-1:0];
-
 wire [3:0] fetched_flag = fetched_val[27:24];
 wire [1:0] fetched_state = fetched_val[26:25];
 
@@ -106,13 +103,6 @@ always @ (posedge clk)
 		fetched_val <=    0;
 		out_valid   <=    0;
 		out_flag    <=    0;
-
-//`ifndef SIMULATION
-//		for (i = 0; i < RAM_SIZE; i = i + 1) begin
-//			KEY[i] <= 0;
-//			VAL[i] <= 0;
-//		end
-//`endif
 	end else begin
 		case (state)
 			IDLE  : begin
@@ -120,11 +110,8 @@ always @ (posedge clk)
 				out_valid <= 0;
 				out_flag  <= 0;
 				if (in_valid) begin
-					//fetched_key <= KEY[hash_addr];
-					//fetched_val <= VAL[hash_addr];
 					fetched_key <= dpram_out_key;
 					fetched_val <= dpram_out_val;
-					//if (in_key == KEY[hash_addr]) 
 					if (in_key == dpram_out_key) 
 						state <= CHECK;
 					else
@@ -164,11 +151,6 @@ always @ (posedge clk)
 			else // in_op == GET
 				state <= IDLE;
 			UPDATE: begin
-				//KEY[hash_addr] <= in_key;
-				//if (fetched_state == ARREST_STATE)
-				//	VAL[hash_addr] <= {4'd0, fetched_flag, 8'd0, sys_cnt[15:0]};
-				//else
-				//	VAL[hash_addr] <= {4'd0, in_op, 8'd0, sys_cnt[15:0]};
 				state <= IDLE;
 			end
 			default : state <= IDLE;
