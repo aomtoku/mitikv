@@ -48,11 +48,11 @@ localparam SUSPECTION = 1,
  * Hash Function for Indexing
  */
 reg  [KEY_SIZE-1:0] key_reg;
-reg                 valid_reg;
+reg                 valid_reg, valid_regg;
 reg  [31:0]         hash_reg;
 reg  [3:0]          flag_reg;
 wire [31:0]         hash;
-wire                crc_rst = valid_reg;
+wire                crc_rst = valid_regg;
 
 crc32 u_hashf (
   .data_in    (in_key),
@@ -67,15 +67,19 @@ always @ (posedge clk)
 	if (rst) begin
 		key_reg   <= 0;
 		valid_reg <= 0;
+		valid_regg<= 0;
 		hash_reg  <= 0;
 		flag_reg  <= 0;
 	end else begin
 		key_reg   <= in_key;
 		valid_reg <= in_valid;
+		valid_regg<= valid_reg;
 		flag_reg  <= in_flag;
-		if (in_valid) 
+		if (valid_reg) 
 			hash_reg <= hash;
 	end
+
+wire [31:0] hash_value = (valid_reg) ? hash : hash_reg;
 
 db_cont #(
 	.HASH_SIZE    (32),
@@ -93,7 +97,7 @@ db_cont #(
 	/* Network Interface side */
 	.in_valid     (valid_reg),
 	.in_op        (flag_reg),
-	.in_hash      (hash_reg),
+	.in_hash      (hash_value),
 	.in_key       (key_reg),
 	.in_value     (), 
 
@@ -107,6 +111,20 @@ db_cont #(
 	.dram_rd_en   (),
 	.dram_rd_dout (),
 	.dram_rd_valid()
+);
+
+
+ila_0 u_ila1 (
+	.clk     (clk), // input wire clk
+	/* verilator lint_off WIDTH */
+	.probe0  ({ // 256pin
+		key_reg,
+		valid_reg,
+		hash_reg,
+		flag_reg,
+		hash
+		//126'd0          ,
+	})/* verilator lint_on WIDTH */ 
 );
 
 
