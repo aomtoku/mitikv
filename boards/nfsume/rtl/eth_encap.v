@@ -1,4 +1,4 @@
-`define DEBUG
+//`define DEBUG
 
 module eth_encap #(
 	parameter KEY_SIZE = 96,
@@ -58,6 +58,7 @@ localparam IP_PROTO_UDP  = 8'h11,
            IP_PROTO_ICMP = 8'h01;
 localparam ICMP_PORT_UNREACH = 8'h03;
 localparam ICMP_DEST_UNREACH = 8'h03;
+localparam ICMP_ADMIN_PROHIB = 8'h0a;
 localparam DNS_SERV_PORT__   = 16'd53;
 localparam DEBUG_SERV_PORT__ = 16'd12345;
 `ifdef DEBUG
@@ -119,7 +120,8 @@ assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0
 wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
                     rx1_ip_proto  == IP_PROTO_ICMP     &&
                     rx1_icmp_type == ICMP_DEST_UNREACH &&
-                    rx1_icmp_code == ICMP_PORT_UNREACH ;
+                    (rx1_icmp_code == ICMP_PORT_UNREACH ||
+					 rx1_icmp_code == ICMP_ADMIN_PROHIB);
 wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_ip_proto  == IP_PROTO_UDP      &&
                     rx0_src_uport == DNS_SERV_PORT;
@@ -298,7 +300,7 @@ always @ (posedge clk156) begin
 				hit_cnt[4]  <= 1;
 			if (suspect_mode)
 				hit_cnt[5]  <= 1;
-			if (suspect_mode && suspect_parm_dns[0] == DNS_PARAM_RESPONSE &&
+			if (suspect_mode && suspect_parm_dns[15] == DNS_PARAM_RESPONSE &&
 				rx_cnt0 == 10'd6) begin
 				db_op0 <= 4'b0011;
 				hit_cnt[6] <= 1;
@@ -471,6 +473,8 @@ ila_0 inst_ila (
 	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
 		//126'd0          ,
+		s_axis_rx0_tdata, //64
+		suspect_parm_dns, //16
 		in_key[95:0]    ,//96
 		rx0_ip_proto    ,// 8
 		rx1_ip_proto    ,// 8
