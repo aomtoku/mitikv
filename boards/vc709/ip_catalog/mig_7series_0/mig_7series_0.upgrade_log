@@ -1,0 +1,16 @@
+Copyright 1986-2015 Xilinx, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2015.4.1 (lin64) Build 1431336 Fri Dec 11 14:52:39 MST 2015
+| Date         : Thu Sep  1 11:51:40 2016
+| Host         : anago.arc.ics.keio.ac.jp running 64-bit CentOS release 6.8 (Final)
+| Command      : upgrade_ip
+| Device       : xc7vx690tffg1761-2
+--------------------------------------------------------------------------------------
+
+Upgrade Log for IP 'mig_7series_0'
+
+1. Summary
+----------
+
+SUCCESS in the upgrade of mig_7series_0 (xilinx.com:ip:mig_7series:2.4) to (Rev. 1)
+

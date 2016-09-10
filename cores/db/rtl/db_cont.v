@@ -73,7 +73,7 @@ BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
  * Hash Table Access Logic
  */
 // HashTable 0x0000_0000--0x0000_ffff
-wire [HASH_SIZE-1:0] hash = ( in_hash & 32'h3FF );
+wire [HASH_SIZE-1:0] hash = in_hash; 
 wire [RAM_ADDR-1:0] hash_addr = hash[RAM_ADDR-1:0];
 
 localparam IDLE   = 0,
@@ -81,6 +81,7 @@ localparam IDLE   = 0,
            MISS   = 2,
            UPDATE = 3;
 integer i;
+reg                valid_reg0, valid_reg1, valid_reg2, valid_reg3;
 reg [1:0]          state;
 reg [KEY_SIZE-1:0] fetched_key;
 reg [VAL_SIZE-1:0] fetched_val, get_val;
@@ -104,12 +105,16 @@ always @ (posedge clk)
 		out_valid   <=    0;
 		out_flag    <=    0;
 	end else begin
+		valid_reg0 <= in_valid;
+		valid_reg1 <= valid_reg0;
+		valid_reg2 <= valid_reg1;
+		valid_reg3 <= valid_reg2;
 		case (state)
 			IDLE  : begin
 				judge <= 0;
 				out_valid <= 0;
 				out_flag  <= 0;
-				if (in_valid) begin
+				if (valid_reg0) begin
 					fetched_key <= dpram_out_key;
 					fetched_val <= dpram_out_val;
 					if (in_key == dpram_out_key) 
@@ -131,22 +136,34 @@ always @ (posedge clk)
 				if (in_op[0] == SET_REQ) begin
 					state <= UPDATE;
 					case (in_op[2:1])
-						IDLE_STATE   : state <= IDLE;
-						SUSPECT_STATE: begin
-							if (fetched_state[1] == 0)
-								state <= UPDATE;
-							else
-								state <= IDLE;
+						IDLE_STATE   : begin
+							state <= IDLE;
+							out_flag  <= fetched_val[27:24];
 						end
-						ARREST_STATE: state <= UPDATE;
-						EXPIRE_STATE: state <= IDLE;
+						SUSPECT_STATE: begin
+							if (fetched_state[1] == 0) begin
+								state <= UPDATE;
+								out_flag  <= 4'b0100;
+							end else begin
+								state <= IDLE;
+								out_flag  <= fetched_val[27:24];
+							end
+						end
+						ARREST_STATE: begin
+							state <= UPDATE;
+							out_flag  <= fetched_val[27:24];
+						end
+						EXPIRE_STATE: begin
+							state <= IDLE;
+							out_flag  <= fetched_val[27:24];
+						end
 					endcase
 				end else begin // GET request
 					state     <= IDLE;
 					judge     <= 1;
+					out_flag  <= fetched_val[27:24];
 				end
 				out_valid <= 1;
-				out_flag  <= fetched_val[27:24];
 			end
 			MISS  : if (in_op[0] == SET_REQ)
 				state <= UPDATE;
@@ -179,7 +196,7 @@ dpram #(
 	.douta     ({dpram_out_val, dpram_out_key})  
 );
 `else
-dpram_128_1024 u_dpram (
+dpram_128_262k u_dpram (
 	.clka      (clk),    
 	.ena       (ena),   
 	.wea       (wea),   
@@ -205,6 +222,8 @@ ila_0 u_ila (
 	    out_value    ,//32
 		state        ,// 2
 		fetched_key  ,//96
+		dpram_in_key ,//96
+		dpram_out_key,//96
 		fetched_flag ,// 4
 		fetched_val  ,//32
 		hash          //32
