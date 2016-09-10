@@ -118,13 +118,15 @@ always @ (posedge clk)
 						state <= MISS;
 				end
 			end
-			CHECK : if (fetched_val[15:0] > sys_cnt[15:0]) begin
+			CHECK : if (fetched_val[15:0] < sys_cnt[15:0]) begin
 				// Time is Okay
 				judge <= 0;
 				if (in_op[0] == SET_REQ)
 					state <= UPDATE;
 				else
 					state <= IDLE;
+				out_valid <= 1;
+				out_flag  <= fetched_val[27:24];
 			end else begin  // Time is Expired
 				if (in_op[0] == SET_REQ) begin
 					state <= UPDATE;
@@ -159,9 +161,24 @@ always @ (posedge clk)
 
 
 assign dpram_in_key = in_key;
-assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, fetched_flag, 8'd0, sys_cnt[15:0]} : 
-{4'd0, in_op, 8'd0, sys_cnt[15:0]};
+//assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, fetched_flag, 8'd0, sys_cnt[15:0]} : 
+//{4'd0, in_op, 8'd0, sys_cnt[15:0]};
+assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, 4'b0100, 8'd0, sys_cnt[15:0]} : 
+{4'd0, 4'b0100, 8'd0, sys_cnt[15:0]};
 
+`ifdef SIMULATION
+dpram #(
+	.ADDR    (10),
+	.DWIDTH  (128)
+) u_dpram (
+	.clka      (clk),    
+	.ena       (ena),   
+	.wea       (wea),   
+	.addra     (hash_addr), 
+	.dina      ({dpram_in_val, dpram_in_key}),   
+	.douta     ({dpram_out_val, dpram_out_key})  
+);
+`else
 dpram_128_1024 u_dpram (
 	.clka      (clk),    
 	.ena       (ena),   
@@ -170,8 +187,9 @@ dpram_128_1024 u_dpram (
 	.dina      ({dpram_in_val, dpram_in_key}),   
 	.douta     ({dpram_out_val, dpram_out_key})  
 );
+`endif /* SIMULATION */
 
-
+`ifdef DEBUG_ILA
 ila_0 u_ila (
 	.clk     (clk), // input wire clk
 	/* verilator lint_off WIDTH */
@@ -193,4 +211,6 @@ ila_0 u_ila (
 	})
 	/* verilator lint_on WIDTH */
 );
+`endif /* DEBUG_ILA */
+
 endmodule

@@ -1,4 +1,4 @@
-`define DEBUG
+//`define DEBUG
 
 module eth_encap #(
 	parameter KEY_SIZE = 96,
@@ -417,6 +417,7 @@ assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip,
 
 assign debug = hit_cnt;
 
+`ifndef SIMULATION
 axis_data_fifo_0 u_axis_data_fifo0 (
   .s_axis_aresetn      (!eth_rst),  
   .s_axis_aclk         (clk156),  
@@ -460,12 +461,70 @@ axis_data_fifo_0 u_axis_data_fifo1 (
   .axis_wr_data_count  (),                 
   .axis_rd_data_count  ()                  
 );
+`else
+
+axis_fifo_64 #(
+    .ADDR_WIDTH  (12),
+    .DATA_WIDTH  (64),
+) u_axis_data_fifo0 (
+    .clk              (clk156),
+    .rst              (eth_rst),
+    
+    /*
+     * AXI input
+     */
+    .input_axis_tdata (s_axis_rx1_tdata),
+    .input_axis_tkeep (s_axis_rx1_tkeep),
+    .input_axis_tvalid(s_axis_rx1_tvalid),
+    .input_axis_tready(),
+    .input_axis_tlast (s_axis_rx1_tlast),
+    .input_axis_tuser (1'b0),
+    
+    /*
+     * AXI output
+     */
+    .output_axis_tdata (m_axis_tx0_tdata),
+    .output_axis_tkeep (m_axis_tx0_tkeep),
+    .output_axis_tvalid(m_axis_tx0_tvalid),
+    .output_axis_tready(m_axis_tx0_tready),
+    .output_axis_tlast (m_axis_tx0_tlast),
+    .output_axis_tuser (m_axis_tx0_tuser)
+);
+
+axis_fifo_64 #(
+    .ADDR_WIDTH  (12),
+    .DATA_WIDTH  (64),
+) u_axis_data_fifo1 (
+    .clk              (clk156),
+    .rst              (eth_rst),
+    
+    /*
+     * AXI input
+     */
+    .input_axis_tdata (p0_axis_tdata),
+    .input_axis_tkeep (p0_axis_tkeep),
+    .input_axis_tvalid(p0_axis_tvalid),
+    .input_axis_tready(),
+    .input_axis_tlast (p0_axis_tlast),
+    .input_axis_tuser (1'b0),
+    
+    /*
+     * AXI output
+     */
+    .output_axis_tdata (m_axis_tx1_tdata),
+    .output_axis_tkeep (m_axis_tx1_tkeep),
+    .output_axis_tvalid(m_axis_tx1_tvalid),
+    .output_axis_tready(m_axis_tx1_tready),
+    .output_axis_tlast (m_axis_tx1_tlast),
+    .output_axis_tuser (m_axis_tx1_tuser)
+);
+`endif /* SIMULATION */
 
 /*
  * DEBUG
  */
 
-
+`ifdef DEBUG_ILA
 ila_0 inst_ila (
 	.clk     (clk156), // input wire clk
 	/* verilator lint_off WIDTH */
@@ -487,7 +546,7 @@ ila_0 inst_ila (
 		db_op0           // 4
 	})/* verilator lint_on WIDTH */ 
 );
-
+`endif /* DEBUG_ILA */
 
 endmodule
 
