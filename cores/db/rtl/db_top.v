@@ -6,6 +6,28 @@ module db_top #(
 )(
 	input  wire                clk,
 	input  wire                rst, 
+`ifdef DRAM_SUPPORT
+	/* DDRS SDRAM Infra */
+	input  wire                sys_clk_p,
+	input  wire                sys_clk_n,
+	
+	/* DRAM interace */ 
+	inout  [63:0]              ddr3_dq,
+	inout  [ 7:0]              ddr3_dqs_n,
+	inout  [ 7:0]              ddr3_dqs_p,
+	output [15:0]              ddr3_addr,
+	output [ 2:0]              ddr3_ba,
+	output                     ddr3_ras_n,
+	output                     ddr3_cas_n,
+	output                     ddr3_we_n,
+	output                     ddr3_reset_n,
+	output [ 0:0]              ddr3_ck_p,
+	output [ 0:0]              ddr3_ck_n,
+	output [ 0:0]              ddr3_cke,
+	output [ 0:0]              ddr3_cs_n,
+	output [ 7:0]              ddr3_dm,
+	output [ 0:0]              ddr3_odt,
+`endif /* DRAM_SUPPORT */
 	/* Network Interface */
 	input  wire [KEY_SIZE-1:0] in_key,
 	input  wire [3:0]          in_flag,
@@ -13,7 +35,6 @@ module db_top #(
 	output wire                out_valid,
 	output wire [3:0]          out_flag
 
-	/* DRAM interace */ 
 	//input wire    dram_wr_strb,
 	//input wire    dram_wr_data, 
 );
@@ -29,7 +50,7 @@ localparam KEY_LEN = 96; // bit size (12B)
  */
 localparam VAL_LEN = 32; // bit size (4B)
 /*
- * Value design, 
+ * Value map, 
  *     Status Code           :  4 bit
  *     Flag                  :  4 bit
  *     Time (for Expired)    : 16 bit
@@ -94,6 +115,30 @@ db_cont #(
 	.clk          (clk),
 	.rst          (rst),
 
+	/* DDRS SDRAM Infra */
+	.sys_clk_p    (sys_clk_p),
+	.sys_clk_n    (sys_clk_p),
+	.ui_mig_clk   (),
+	.ui_mig_rst   (),
+	.init_calib_complete(init_calib_complete),
+
+	/* DDR3 SDRAM Interface */
+	.ddr3_addr       (ddr3_addr),
+	.ddr3_ba         (ddr3_ba),
+	.ddr3_cas_n      (ddr3_cas_n),
+	.ddr3_ck_n       (ddr3_ck_n),
+	.ddr3_ck_p       (ddr3_ck_p),
+	.ddr3_cke        (ddr3_cke),
+	.ddr3_ras_n      (ddr3_ras_n),
+	.ddr3_we_n       (ddr3_we_n),
+	.ddr3_dq         (ddr3_dq),
+	.ddr3_dqs_n      (ddr3_dqs_n),
+	.ddr3_dqs_p      (ddr3_dqs_p),
+	.ddr3_reset_n    (ddr3_reset_n),
+	.ddr3_cs_n       (ddr3_cs_n),
+	.ddr3_dm         (ddr3_dm),
+	.ddr3_odt        (ddr3_odt),
+
 	/* Network Interface side */
 	.in_valid     (valid_reg),
 	.in_op        (flag_reg),
@@ -103,14 +148,7 @@ db_cont #(
 
 	.out_valid    (out_valid),
 	.out_flag     (out_flag),
-	.out_value    (),
-	/* DRAM Interface */
-	.dram_wr_en   (),
-	.dram_wr_din  (),
-	.dram_addr    (),
-	.dram_rd_en   (),
-	.dram_rd_dout (),
-	.dram_rd_valid()
+	.out_value    ()
 );
 
 
@@ -127,24 +165,4 @@ ila_0 u_ila1 (
 	})/* verilator lint_on WIDTH */ 
 );
 
-
-/*
- * DRAM PHY Controller
- */
-//dram_phy u_dram_phy #(
-//	RAM_SIZE_KB  (1),
-//	RAM_ADDR     (22),
-//	RAM_DWIDTH   (32)
-//)(
-//	.clk         (clk),
-//	.rst         (rst),
-//
-//	.wr_en       (),
-//	.wr_din      (),
-//	.addr        (),
-//	.rd_en       (),
-//	.rd_dout     (),
-//	.rd_valid    ()
-//);
-//
 endmodule

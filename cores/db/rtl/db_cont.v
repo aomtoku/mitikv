@@ -8,9 +8,33 @@ module db_cont #(
 	parameter RAM_SIZE    = 1024
 )(
 	/* System Interface */
-	input  wire  clk,
+	input  wire  clk156,
 	input  wire  rst,
+`ifdef DRAM_SUPPORT
+	/* DDRS SDRAM Infra */
+	input  wire    sys_clk_p,
+	input  wire    sys_clk_n,
+	output wire    ui_mig_clk,
+	output wire    ui_mig_rst,
+	output wire    init_calib_complete,
 
+	/* DDR3 SDRAM Interface */
+	inout  [63:0]  ddr3_dq,
+	inout  [ 7:0]  ddr3_dqs_n,
+	inout  [ 7:0]  ddr3_dqs_p,
+	output [15:0]  ddr3_addr,
+	output [ 2:0]  ddr3_ba,
+	output         ddr3_ras_n,
+	output         ddr3_cas_n,
+	output         ddr3_we_n,
+	output         ddr3_reset_n,
+	output [ 0:0]  ddr3_ck_p,
+	output [ 0:0]  ddr3_ck_n,
+	output [ 0:0]  ddr3_cke,
+	output [ 0:0]  ddr3_cs_n,
+	output [ 7:0]  ddr3_dm,
+	output [ 0:0]  ddr3_odt,
+`endif /* DRAM_SUPPORT */
 	/* Network Interface side */
 	input  wire                  in_valid     ,
 	input  wire [3:0]            in_op        ,
@@ -20,14 +44,7 @@ module db_cont #(
 
 	output reg                   out_valid    ,
 	output reg  [3:0]            out_flag     ,
-	output wire [VAL_SIZE-1:0]   out_value    ,
-	/* DRAM Interface */
-	output wire                  dram_wr_en   ,
-	output wire [RAM_DWIDTH-1:0] dram_wr_din  ,
-	output wire [RAM_ADDR-1:0]   dram_addr    ,
-	output wire                  dram_rd_en   ,
-	input  wire [RAM_DWIDTH-1:0] dram_rd_dout ,
-	input  wire                  dram_rd_valid
+	output wire [VAL_SIZE-1:0]   out_value     
 );
 
 localparam SET_REQ = 1'b1,
@@ -42,7 +59,7 @@ localparam IDLE_STATE    = 2'b00,
  */
 wire div_clk;
 reg [23:0] div_cnt;
-always @ (posedge clk)
+always @ (posedge clk156)
 	if (rst)
 		div_cnt <= 0;
 	else
@@ -96,7 +113,7 @@ wire [VAL_SIZE-1:0] dpram_out_val, dpram_in_val;
 wire wea = state == UPDATE;
 wire ena = 1'b1;
 
-always @ (posedge clk)
+always @ (posedge clk156)
 	if (rst) begin
 		judge       <=    0;
 		state       <= IDLE;
@@ -183,7 +200,174 @@ assign dpram_in_key = in_key;
 assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, 4'b0100, 8'd0, sys_cnt[15:0]} : 
 {4'd0, 4'b0100, 8'd0, sys_cnt[15:0]};
 
-`ifdef SIMULATION
+`ifdef DRAM_SUPPORT
+/*
+ * DRAM APP Interface 
+ */
+localparam DATA_WIDTH            = 64;
+localparam RANK_WIDTH = clogb2(RANKS);
+localparam PAYLOAD_WIDTH         = (ECC_TEST == "OFF") ? DATA_WIDTH : DQ_WIDTH;
+localparam BURST_LENGTH          = STR_TO_INT(BURST_MODE);
+localparam APP_DATA_WIDTH        = 2 * nCK_PER_CLK * PAYLOAD_WIDTH;
+localparam APP_MASK_WIDTH        = APP_DATA_WIDTH / 8;
+
+function integer clogb2 (input integer size);
+    begin
+      size = size - 1;
+      for (clogb2=1; size>1; clogb2=clogb2+1)
+        size = size >> 1;
+    end
+  endfunction // clogb2
+
+  function integer STR_TO_INT;
+    input [7:0] in;
+    begin
+      if(in == "8")
+        STR_TO_INT = 8;
+      else if(in == "4")
+        STR_TO_INT = 4;
+      else
+        STR_TO_INT = 0;
+    end
+  endfunction
+
+wire [(2*nCK_PER_CLK)-1:0]            app_ecc_multiple_err;
+wire [ADDR_WIDTH-1:0]                 app_addr;
+wire [2:0]                            app_cmd;
+wire                                  app_en;
+wire                                  app_rdy;
+wire [APP_DATA_WIDTH-1:0]             app_rd_data;
+wire                                  app_rd_data_end;
+wire                                  app_rd_data_valid;
+wire [APP_DATA_WIDTH-1:0]             app_wdf_data;
+wire                                  app_wdf_end;
+wire [APP_MASK_WIDTH-1:0]             app_wdf_mask;
+wire                                  app_wdf_rdy;
+wire                                  app_sr_active;
+wire                                  app_ref_ack;
+wire                                  app_zq_ack;
+wire                                  app_wdf_wren;
+
+/*
+ *  DRAM fifo (wr)
+ *      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
+ */
+wire [512+64+30+1+1-1:0] din_wrfifo, dout_wrfifo;
+wire wr_en_wrfifo, rd_en_wrfifo;
+wire empty_wrfifo, full_wrfifo;
+
+fifo_512 u_wrfifo (
+	.rst      ( rst ),  
+	.wr_clk   ( clk156 ),  
+	.rd_clk   ( ui_mig_clk   ), 
+	.din      ( din_wrfifo   ), 
+	.wr_en    ( wr_en_wrfifo ),
+	.rd_en    ( rd_en_wrfifo ),
+	.dout     ( dout_wrfifo  ), 
+	.full     ( full_wrfifo  ), 
+	.empty    ( empty_wrfifo ) 
+);
+
+/*
+ *  DRAM fifo (rd)
+ *      configuration: 32width x 64depth
+ *      width bitmap : 30(addr) + 1(cmd) + 1(vadid)
+ */
+wire [30+1+1-1:0] din_rdfifo, dout_rdfifo;
+wire wr_en_rdfifo, rd_en_rdfifo;
+wire empty_rdfifo, full_rdfifo;
+
+fifo_512 u_rd_fifo (
+	.rst      ( rst ),  
+	.wr_clk   ( clk156 ),  
+	.rd_clk   ( ui_mig_clk   ), 
+	.din      ( din_fifo_in  ), 
+	.wr_en    ( wr_en_rdfifo ),
+	.rd_en    ( rd_en_rdfifo ),
+	.dout     ( dout_rdfifo  ), 
+	.full     ( full_rdfifo  ), 
+	.empty    ( empty_rdfifo ) 
+);
+
+/*
+ *  Arbiter 
+ *     WR-FIFO or RD-FIFO
+ */
+localparam MIG_CMD_READ  = 3'b001;
+localparam MIG_CMD_WRITE = 3'b000;
+localparam ARB_RD        = 2'b01;
+localparam ARB_WR        = 2'b10;
+
+wire [2:0]   wr_fifo_cmd = (dout_wrfifo[1] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
+wire [2:0]   rd_fifo_cmd = (dout_wrfifo[0] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
+wire [29:0]  wrfifo_addr = dout_wrfifo[31:2];
+wire [29:0]  rdfifo_addr = dout_rdfifo[31:2];
+
+wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
+wire [511:0] wrfifo_data = dout_wrfifo[607:96];
+wire       fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
+
+wire [1:0] arb_switch = (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
+                                       (dout_rdfifo[0]) ? ARB_RD : 2'b00;
+
+// FIFO assignment
+assign rd_en_wrfifo = arb_switch == ARB_WR && app_rdy == 1'b1;
+assign rd_en_rdfifo = arb_switch == ARB_RD && app_rdy == 1'b1;
+
+// MIG assignment
+assign app_addr = rd_fifo_addr : wr_fifo_addr ;
+assign app_cmd  = rd_fifo_cmd : wr_fifo_cmd ;
+assign app_en = fifo_valid;
+assign app_wdf_data = wrfifo_data;
+assign app_wdf_wren = arb_switch == ARB_WR;
+assign app_wdf_end  = 1;
+
+sume_ddr_mig u_sume_ddr_mig (
+       .ddr3_addr                      (ddr3_addr),
+       .ddr3_ba                        (ddr3_ba),
+       .ddr3_cas_n                     (ddr3_cas_n),
+       .ddr3_ck_n                      (ddr3_ck_n),
+       .ddr3_ck_p                      (ddr3_ck_p),
+       .ddr3_cke                       (ddr3_cke),
+       .ddr3_ras_n                     (ddr3_ras_n),
+       .ddr3_we_n                      (ddr3_we_n),
+       .ddr3_dq                        (ddr3_dq),
+       .ddr3_dqs_n                     (ddr3_dqs_n),
+       .ddr3_dqs_p                     (ddr3_dqs_p),
+       .ddr3_reset_n                   (ddr3_reset_n),
+       .ddr3_cs_n                      (ddr3_cs_n),
+       .ddr3_dm                        (ddr3_dm),
+       .ddr3_odt                       (ddr3_odt),
+
+       .init_calib_complete            (init_calib_complete),
+       .app_addr                       (app_addr),
+       .app_cmd                        (app_cmd),
+       .app_en                         (app_en),
+       .app_wdf_data                   (app_wdf_data),
+       .app_wdf_end                    (app_wdf_end),
+       .app_wdf_wren                   (app_wdf_wren),
+       .app_rd_data                    (app_rd_data),
+       .app_rd_data_end                (app_rd_data_end),
+       .app_rd_data_valid              (app_rd_data_valid),
+       .app_rdy                        (app_rdy),
+       .app_wdf_rdy                    (app_wdf_rdy),
+       .app_sr_req                     (1'b0),
+       .app_ref_req                    (1'b0),
+       .app_zq_req                     (1'b0),
+       .app_sr_active                  (app_sr_active),
+       .app_ref_ack                    (app_ref_ack),
+       .app_zq_ack                     (app_zq_ack),
+       .app_wdf_mask                   (app_wdf_mask),
+      
+       .ui_clk                         (ui_mig_clk),
+       .ui_clk_sync_rst                (ui_mig_rst),
+       
+       .sys_clk_p                      (sys_clk_p),
+       .sys_clk_n                      (sys_clk_n),
+       .sys_rst                        (!rst)
+);
+`else 
+`ifdef SIMULATION_DEBUG
 dpram #(
 	.ADDR    (10),
 	.DWIDTH  (128)
@@ -204,7 +388,8 @@ dpram_128_262k u_dpram (
 	.dina      ({dpram_in_val, dpram_in_key}),   
 	.douta     ({dpram_out_val, dpram_out_key})  
 );
-`endif /* SIMULATION */
+`endif /* SIMULATION_DEBUG */
+`endif /* DRAM_SUPPORT */
 
 `ifdef DEBUG_ILA
 ila_0 u_ila (

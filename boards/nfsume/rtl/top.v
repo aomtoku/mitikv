@@ -2,36 +2,70 @@
 
 //`define SIMULATION_ILA
 
-module top (
-	input  wire FPGA_SYSCLK_P,
-	input  wire FPGA_SYSCLK_N,
-	inout  wire I2C_FPGA_SCL,
-	inout  wire I2C_FPGA_SDA,
-	output wire [7:0] LED,
+module top 
+`ifdef DRAM_SUPPORT
+#(
+   parameter SIMULATION            = "FALSE",
+   parameter TCQ                   = 100,
+   parameter DRAM_TYPE             = "DDR3",
+   parameter nCK_PER_CLK           = 4,
+   parameter DEBUG_PORT            = "OFF",
+   
+   parameter RST_ACT_LOW           = 1
+
+)
+`endif /* DRAM_SUPPORT */
+(
+	input  wire    FPGA_SYSCLK_P,
+	input  wire    FPGA_SYSCLK_N,
+	inout  wire    I2C_FPGA_SCL,
+	inout  wire    I2C_FPGA_SDA,
+	output [7:0]   LED,
+
+`ifdef DRAM_SUPPORT
+	input  wire    sys_clk_p,
+	input  wire    sys_clk_n,
+	// DDR3 SDRAM
+	inout  [63:0]  ddr3_dq,
+	inout  [ 7:0]  ddr3_dqs_n,
+	inout  [ 7:0]  ddr3_dqs_p,
+	output [15:0]  ddr3_addr,
+	output [ 2:0]  ddr3_ba,
+	output         ddr3_ras_n,
+	output         ddr3_cas_n,
+	output         ddr3_we_n,
+	output         ddr3_reset_n,
+	output [ 0:0]  ddr3_ck_p,
+	output [ 0:0]  ddr3_ck_n,
+	output [ 0:0]  ddr3_cke,
+	output [ 0:0]  ddr3_cs_n,
+	output [ 7:0]  ddr3_dm,
+	output [ 0:0]  ddr3_odt,
+`endif /* DRAM_SUPPORT */
 
 	// Ethernet
-	input  wire SFP_CLK_P,
-	input  wire SFP_CLK_N,
-	output wire SFP_REC_CLK_P,
-	output wire SFP_REC_CLK_N,
-	input  wire SFP_CLK_ALARM_B,
+	input  wire    SFP_CLK_P,
+	input  wire    SFP_CLK_N,
+	output wire    SFP_REC_CLK_P,
+	output wire    SFP_REC_CLK_N,
+	input  wire    SFP_CLK_ALARM_B,
 
 	// Ethernet (ETH0)
-	input  wire ETH0_TX_P,
-	input  wire ETH0_TX_N,
-	output wire ETH0_RX_P,
-	output wire ETH0_RX_N,
-	input  wire ETH0_TX_FAULT,
-	input  wire ETH0_RX_LOS,
-	output wire ETH0_TX_DISABLE,
+	input  wire    ETH0_TX_P,
+	input  wire    ETH0_TX_N,
+	output wire    ETH0_RX_P,
+	output wire    ETH0_RX_N,
+	input  wire    ETH0_TX_FAULT,
+	input  wire    ETH0_RX_LOS,
+	output wire    ETH0_TX_DISABLE,
 	// Ethernet (ETH1)
-	input  wire ETH1_TX_P,
-	input  wire ETH1_TX_N,
-	output wire ETH1_RX_P,
-	output wire ETH1_RX_N,
-	input  wire ETH1_TX_FAULT,
-	input  wire ETH1_RX_LOS,
-	output wire ETH1_TX_DISABLE
+	input  wire    ETH1_TX_P,
+	input  wire    ETH1_TX_N,
+	output wire    ETH1_RX_P,
+	output wire    ETH1_RX_N,
+	input  wire    ETH1_TX_FAULT,
+	input  wire    ETH1_RX_LOS,
+	output wire    ETH1_TX_DISABLE
 );
 
 
@@ -62,7 +96,11 @@ BUFG buffer_clk100 (
 reg [13:0] cold_counter = 14'd0;
 reg        sys_rst;
 always @(posedge clk200) 
+`ifndef SIMULATION_DEBUG
 	if (cold_counter != 14'h3fff) begin
+`else
+	if (cold_counter != 14'h9) begin
+`endif /* SIMULATION_DEBUG */
 		cold_counter <= cold_counter + 14'd1;
 		sys_rst <= 1'b1;
 	end else
@@ -128,6 +166,26 @@ db_top #(
 ) u_db_top (
 	.clk              (db_clk),
 	.rst              (sys_rst), 
+`ifdef DRAM_SUPPORT
+	.sys_clk_p        (sys_clk_p),
+	.sys_clk_n        (sys_clk_n),
+
+	.ddr3_addr        (ddr3_addr),
+	.ddr3_ba          (ddr3_ba),
+	.ddr3_cas_n       (ddr3_cas_n),
+	.ddr3_ck_n        (ddr3_ck_n),
+	.ddr3_ck_p        (ddr3_ck_p),
+	.ddr3_cke         (ddr3_cke),
+	.ddr3_ras_n       (ddr3_ras_n),
+	.ddr3_we_n        (ddr3_we_n),
+	.ddr3_dq          (ddr3_dq),
+	.ddr3_dqs_n       (ddr3_dqs_n),
+	.ddr3_dqs_p       (ddr3_dqs_p),
+	.ddr3_reset_n     (ddr3_reset_n),
+	.ddr3_cs_n        (ddr3_cs_n),
+	.ddr3_dm          (ddr3_dm),
+	.ddr3_odt         (ddr3_odt),
+`endif /* DRAM_SUPPORT */
 	/* Network Interface */
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
