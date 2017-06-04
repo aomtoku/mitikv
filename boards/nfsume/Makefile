@@ -37,6 +37,7 @@ IP_SRC := ip_catalog/axi_10g_ethernet_0/axi_10g_ethernet_0.xci  \
           ip_catalog/axis_data_fifo_0/axis_data_fifo_0.xci      \
           ip_catalog/ila_0/ila_0.xci                            \
           ip_catalog/dpram_128_262k/dpram_128_262k.xci          \
+		  ip_catalog/sume_ddr_mig.dcp                           \
           ip_catalog/si5324_regs_rom/si5324_regs_rom.xcix
 
 XDC_SRC := constraints/sume.xdc      \
@@ -49,6 +50,7 @@ TCL_SRC := scripts/vivado_createprj.tcl  \
            scripts/vivado_bitstream.tcl
 
 all: bitstream
+
 
 prj: $(proj).xpr
 $(proj).xpr: $(TCL_SRC) $(RTL_SRC) $(IP_SRC) $(XDC_SRC)
