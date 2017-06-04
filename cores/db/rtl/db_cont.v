@@ -18,11 +18,6 @@ module db_cont #(
 	output wire    ui_mig_rst,
 	output wire    init_calib_complete,
 
-	/* DDR3 SDRAM Interface */
-	inout  [63:0]  ddr3_dq,
-	inout  [ 7:0]  ddr3_dqs_n,
-	inout  [ 7:0]  ddr3_dqs_p,
-	output [15:0]  ddr3_addr,
 	output [ 2:0]  ddr3_ba,
 	output         ddr3_ras_n,
 	output         ddr3_cas_n,
@@ -295,7 +290,7 @@ fifo_512 u_rd_fifo (
 /*
  *  DRAM fifo (save)
  *      configuration: 32width x 64depth
- *      width bitmap : 32(value) + 96(key) + 30(addr) + 1(vadid)
+ *      width bitmap : 32(value) + 96(key) + 30(addr) + 1(reserved) + 1(vadid)
  */
 wire [32+96+30+1+1-1:0] din_savefifo, dout_savefifo;
 wire wr_en_savefifo, rd_en_savefifo;
@@ -332,19 +327,34 @@ wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data = dout_wrfifo[607:96];
 wire       fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
 
-wire [1:0] arb_switch = (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
+wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
+                        (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
                                        (dout_rdfifo[0]) ? ARB_RD : 2'b00;
 
+always @ (posedge ui_mig_clk) 
+	if (ui_mig_rst)
+		arb_reg <= ARB_RD;
+	else begin
+		if (dout_rdfifo[0] & dout_wrfifo[0] && arb_reg == ARB_RD)
+			arb_reg <= ARB_WR;
+		else if (dout_rdfifo[0] & dout_wrfifo[0] && arb_reg == ARB_WR)  
+			arb_reg <= ARB_WR;
+	end
+
+
+reg          stage_valid0, stage_valid1, stage_valid2;
+reg  [159:0] stage_data_0;
+wire [511:0] wr_data_pre;
 // FIFO assignment
-assign rd_en_wrfifo = arb_switch == ARB_WR && app_rdy == 1'b1;
-assign rd_en_rdfifo = arb_switch == ARB_RD && app_rdy == 1'b1;
-assign wr_en_wrfifo = ;
-assign wr_en_rdfifo = in_valid;
-
-assign din_rdfifo = {in_hash[29:0], 2'b11};
-assign din_wrfifo = {, , 2'b01};
-
-
+assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
+assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
+assign rd_en_savefifo = app_rd_valid;
+assign wr_en_wrfifo   = stage_valid0;
+assign wr_en_rdfifo   = in_valid;
+assign wr_en_savefifo = in_valid;
+assign din_rdfifo     = {in_hash[29:0], 2'b11};
+assign din_wrfifo     = {wr_data_pre, stage_data_0[31:2], 2'b01};
+assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 
 // MIG assignment
 assign app_addr = rd_fifo_addr : wr_fifo_addr ;
@@ -354,17 +364,11 @@ assign app_wdf_data = wrfifo_data;
 assign app_wdf_wren = arb_switch == ARB_WR;
 assign app_wdf_end  = 1;
 
-// 
-assign din_savefifo = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
-assign wr_en_savefifo = in_valid;
-
-
 // To support 1024bit data width of MIG,
 // you need to setup 4-7 regiseters.
 reg [511:0] rd_data_buf;
 reg [95:0] key_reg0, key_reg1, key_reg2, key_reg3,
            key_reg4, key_reg5, key_reg6, key_reg7;
-reg         stage_valid0, stage_valid1, stage_valid2;
 
 wire [127:0] slot0, slot1, slot2, slot3;
 wire [127:0] slot4, slot5, slot6, slot7;
@@ -379,7 +383,6 @@ wire value_cmp0  = slot
 wire table_hit = key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3;
 wire update_en   = stage_valid_0 & ~table_hit;
 
-reg [159:0] stage_data_0;
 
 assign slot0 = rd_data_buf[127:0];
 assign slot1 = rd_data_buf[255:128];
@@ -387,18 +390,15 @@ assign slot2 = rd_data_buf[383:256];
 assign slot3 = rd_data_buf[511:384];
 
 wire [31:0] rand;
-
 wire insert0 = table_hit ? key_lookup0 : (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
 wire insert1 = table_hit ? key_lookup1 : (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
 wire insert2 = table_hit ? key_lookup2 : (rand[1:0] == 2'b10) ? 1'b1 : 1'b0;
 wire insert3 = table_hit ? key_lookup3 : (rand[1:0] == 2'b11) ? 1'b1 : 1'b0;
 
-wire [511:0] wr_data_pre = (insert0) ? {rd_data_buf[511:128], stage_data_0[127:0]} :
-                           (insert1) ? {rd_data_buf[511:256], stage_data_0[127:0], rd_data_buf[127:0]} : 
-                           (insert2) ? {rd_data_buf[511:384], stage_data_0[127:0], rd_data_buf[255:0]} : 
-                           (insert3) ? {stage_data_0[127:0], rd_data_buf[383:0]} : 512'd0;
-
-
+assign wr_data_pre = (insert0) ? {rd_data_buf[511:128], stage_data_0[159:32]} :
+                     (insert1) ? {rd_data_buf[511:256], stage_data_0[159:32], rd_data_buf[127:0]} : 
+                     (insert2) ? {rd_data_buf[511:384], stage_data_0[159:32], rd_data_buf[255:0]} : 
+                     (insert3) ? {stage_data_0[159:32], rd_data_buf[383:0]} : 512'd0;
 
 always @ (posedge clk156)
 	if (rst) begin
