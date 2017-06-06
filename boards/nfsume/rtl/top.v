@@ -56,6 +56,11 @@ module top
 	inout  wire    I2C_FPGA_SDA,
 	output [7:0]   LED,
 
+
+`ifdef SIMULATION_DEBUG
+	input  wire    sys_rst_n,
+`endif /* SIMULATION_DEBUG */
+
 `ifdef DRAM_SUPPORT
 	input  wire    sys_clk_p,
 	input  wire    sys_clk_n,
@@ -122,6 +127,18 @@ BUFG buffer_clk100 (
 	.O  (clk100)
 );
 
+`ifdef DRAM_SUPPORT
+wire buf_sys_clk_p, buf_sys_clk_n;
+assign buf_sys_clk_p = sys_clk_p;
+assign buf_sys_clk_n = sys_clk_n;
+//IBUFGDS_DIFF_OUT IBUFDS_diff_out_mig_clk (
+//	.I   (sys_clk_p),
+//	.IB  (sys_clk_n),
+//	.O   (buf_sys_clk_p),
+//	.OB  (buf_sys_clk_n)
+//);
+`endif /* DRAM_SUPPORT */
+
 /*
  *  Core Reset 
  *  ***FPGA specified logic
@@ -138,6 +155,7 @@ always @(posedge clk200)
 		sys_rst <= 1'b1;
 	end else
 		sys_rst <= 1'b0;
+
 /*
  *  Ethernet Top Instance
  */
@@ -149,7 +167,7 @@ wire                db_clk;
 eth_top #(
 	.KEY_SIZE           (96),
 	.VAL_SIZE           (32)
-) eth0_top (
+) u_eth_top (
 	.clk100             (clk100),
 	.sys_rst            (sys_rst),
 	.debug              (LED),
@@ -198,10 +216,15 @@ db_top #(
 	.RAM_ADDR(18)
 ) u_db_top (
 	.clk              (db_clk),
+`ifndef SIMULATION_DEBUG
 	.rst              (sys_rst), 
+`else
+	.rst              (!sys_rst_n), 
+`endif
+
 `ifdef DRAM_SUPPORT
-	.sys_clk_p        (sys_clk_p),
-	.sys_clk_n        (sys_clk_n),
+	.sys_clk_p        (buf_sys_clk_p),
+	.sys_clk_n        (buf_sys_clk_n),
 
 	.ddr3_addr        (ddr3_addr),
 	.ddr3_ba          (ddr3_ba),

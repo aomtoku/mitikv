@@ -120,7 +120,7 @@ db_cont #(
 `ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	.sys_clk_p    (sys_clk_p),
-	.sys_clk_n    (sys_clk_p),
+	.sys_clk_n    (sys_clk_n),
 	.ui_mig_clk   (),
 	.ui_mig_rst   (),
 	.init_calib_complete(init_calib_complete),

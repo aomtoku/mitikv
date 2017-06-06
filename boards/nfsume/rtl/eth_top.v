@@ -69,7 +69,11 @@ sfp_refclk_init sfp_refclk_init0 (
 reg [13:0] cold_counter = 0; 
 reg        eth_rst;
 always @(posedge clk156) 
+`ifndef SIMULATION_DEBUG
 	if (cold_counter != 14'h3fff) begin
+`else
+	if (cold_counter != 14'h9) begin
+`endif /* SIMULATION_DEBUG */
 		cold_counter <= cold_counter + 14'd1;
 		eth_rst      <= 1'b1;
 	end else
@@ -186,7 +190,11 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 	.refclk_n                      (SFP_CLK_N),
 	.refclk_p                      (SFP_CLK_P),
 	.dclk                          (clk100),
+`ifndef SIMULATION_DEBUG
 	.reset                         (eth_rst),
+`else
+	.reset                         (sys_rst),
+`endif /* SIMULATION_DEBUG */
 	.rx_statistics_vector          (),
 	.rxn                           (ETH0_TX_N),
 	.rxp                           (ETH0_TX_P),
@@ -218,7 +226,11 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 	.m_axis_rx_tuser               (s_axis_rx0_tuser),
 	.m_axis_rx_tvalid              (s_axis_rx0_tvalid),
 
+`ifndef SIMULATION_DEBUG
 	.sim_speedup_control           (1'b0),
+`else
+	.sim_speedup_control           (1'b1),
+`endif /* SIMULATION_DEBUG */
 	.rx_axis_aresetn               (!eth_rst),
 	.tx_axis_aresetn               (!eth_rst),
 
@@ -256,7 +268,11 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 	.tx_fault                     (ETH1_TX_FAULT), 
 	.tx_disable                   (ETH1_TX_DISABLE),   
 	.pcspma_status                (),               
+`ifndef SIMULATION_DEBUG
 	.sim_speedup_control          (1'b0),           
+`else
+	.sim_speedup_control          (1'b1),
+`endif /* SIMULATION_DEBUG */
 	.rxrecclk_out                 (),               
 	.areset_coreclk               (areset_coreclk), 
 	.txusrclk                     (txusrclk),       
