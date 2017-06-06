@@ -5,6 +5,41 @@
 module top 
 `ifdef DRAM_SUPPORT
 #(
+   parameter CK_WIDTH              = 1,
+   parameter nCS_PER_RANK          = 1,
+   parameter CKE_WIDTH             = 1,
+   parameter DM_WIDTH              = 8,
+   parameter ODT_WIDTH             = 1,
+   parameter BANK_WIDTH            = 3,
+   parameter COL_WIDTH             = 10,
+   parameter CS_WIDTH              = 1,
+   parameter DQ_WIDTH              = 64,
+   parameter DQS_WIDTH             = 8,
+   parameter DQS_CNT_WIDTH         = 3,
+   parameter DRAM_WIDTH            = 8,
+   parameter ECC                   = "OFF",
+   parameter ECC_TEST              = "OFF",
+   parameter nBANK_MACHS           = 2,
+   parameter RANKS                 = 1,
+   parameter ROW_WIDTH             = 16,
+   parameter ADDR_WIDTH            = 30,
+
+   parameter BURST_MODE            = "8",
+                                     // DDR3 SDRAM:
+                                     // Burst Length (Mode Register 0).
+                                     // # = "8", "4", "OTF".
+   parameter CLKIN_PERIOD          = 5000,
+   parameter CLKFBOUT_MULT         = 8,
+   parameter DIVCLK_DIVIDE         = 1,
+   parameter CLKOUT0_PHASE         = 337.5,
+   parameter CLKOUT0_DIVIDE        = 2,
+   parameter CLKOUT1_DIVIDE        = 2,
+   parameter CLKOUT2_DIVIDE        = 32,
+   parameter CLKOUT3_DIVIDE        = 8,
+   parameter MMCM_VCO              = 800,
+   parameter MMCM_MULT_F           = 4,
+   parameter MMCM_DIVCLK_DIVIDE    = 1,
+
    parameter SIMULATION            = "FALSE",
    parameter TCQ                   = 100,
    parameter DRAM_TYPE             = "DDR3",
@@ -12,7 +47,6 @@ module top
    parameter DEBUG_PORT            = "OFF",
    
    parameter RST_ACT_LOW           = 1
-
 )
 `endif /* DRAM_SUPPORT */
 (
@@ -67,7 +101,6 @@ module top
 	input  wire    ETH1_RX_LOS,
 	output wire    ETH1_TX_DISABLE
 );
-
 
 /*
  *  Core Clocking 

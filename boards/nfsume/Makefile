@@ -14,6 +14,7 @@ RTL_SRC := rtl/SFP_CLK_INIT_rtl/i2c/trunk/rtl/verilog/i2c_master_bit_ctrl.v  \
            rtl/eth_mac_conf.v                                                \
            rtl/eth_encap.v                                                   \
            rtl/eth_top.v                                                     \
+           rtl/prbs.v\
 		   ../../cores/db/rtl/db_top.v                                       \
 		   ../../cores/db/rtl/crc32.v                                        \
 		   ../../cores/db/rtl/db_cont.v                                      \
@@ -33,13 +34,16 @@ RTL_SRC := rtl/SFP_CLK_INIT_rtl/i2c/trunk/rtl/verilog/i2c_master_bit_ctrl.v  \
 
 IP_SRC := ip_catalog/axi_10g_ethernet_0/axi_10g_ethernet_0.xci  \
           ip_catalog/axi_10g_ethernet_nonshared/axi_10g_ethernet_nonshared.xci \
-          ip_catalog/axis_data_fifo_1/axis_data_fifo_1.xci      \
           ip_catalog/axis_data_fifo_0/axis_data_fifo_0.xci      \
-          ip_catalog/ila_0/ila_0.xci                            \
-          ip_catalog/dpram_128_262k/dpram_128_262k.xci          \
-		  ip_catalog/sume_ddr_mig.dcp                           \
+		  ip_catalog/sume_ddr_mig/sume_ddr_mig.dcp              \
+		  ip_catalog/asfifo_160_64/asfifo_160_64.dcp            \
+		  ip_catalog/asfifo_32_64/asfifo_32_64.dcp              \
+		  ip_catalog/asfifo_608_64/asfifo_608_64.dcp            \
           ip_catalog/si5324_regs_rom/si5324_regs_rom.xcix
 
+#ip_catalog/axis_data_fifo_1.xcix    
+#ip_catalog/ila_0/ila_0.xci     
+#ip_catalog/dpram_128_262k/dpram_128_262k.xci 
 XDC_SRC := constraints/sume.xdc      \
            constraints/sume-eth.xdc 
 
@@ -51,6 +55,8 @@ TCL_SRC := scripts/vivado_createprj.tcl  \
 
 all: bitstream
 
+ip:
+	vivado -mode tcl -source scripts/create_ip.tcl
 
 prj: $(proj).xpr
 $(proj).xpr: $(TCL_SRC) $(RTL_SRC) $(IP_SRC) $(XDC_SRC)
@@ -99,9 +105,14 @@ sim-clean:
 	rm -f wave.vcd
 	rm -rf obj_dir
 
+ip-clean:
+	rm -rf .srcs
+	rm -rf ip_catalog/sume_ddr_mig ip_catalog/asfifo_160_64 ip_catalog/asfifo_32_64 ip_catalog/asfifo_608_64
+
 .PHONY: clean load
 clean: sim-clean synth-clean
 
 .PHONY: distclean
 distclean:
 	git clean -Xdf
+

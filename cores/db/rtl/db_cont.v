@@ -1,4 +1,50 @@
+`timescale 1ps/1ps
+
 module db_cont #(
+`ifdef DRAM_SUPPORT
+	parameter CK_WIDTH              = 1,
+	parameter nCS_PER_RANK          = 1,
+	parameter CKE_WIDTH             = 1,
+	parameter DM_WIDTH              = 8,
+	parameter ODT_WIDTH             = 1,
+	parameter BANK_WIDTH            = 3,
+	parameter COL_WIDTH             = 10,
+	parameter CS_WIDTH              = 1,
+	parameter DQ_WIDTH              = 64,
+	parameter DQS_WIDTH             = 8,
+	parameter DQS_CNT_WIDTH         = 3,
+	parameter DRAM_WIDTH            = 8,
+	parameter ECC                   = "OFF",
+	parameter ECC_TEST              = "OFF",
+	parameter nBANK_MACHS           = 2,
+	parameter RANKS                 = 1,
+	parameter ROW_WIDTH             = 16,
+	parameter ADDR_WIDTH            = 30,
+	
+	parameter BURST_MODE            = "8",
+	                                  // DDR3 SDRAM:
+	                                  // Burst Length (Mode Register 0).
+	                                  // # = "8", "4", "OTF".
+	parameter CLKIN_PERIOD          = 5000,
+	parameter CLKFBOUT_MULT         = 8,
+	parameter DIVCLK_DIVIDE         = 1,
+	parameter CLKOUT0_PHASE         = 337.5,
+	parameter CLKOUT0_DIVIDE        = 2,
+	parameter CLKOUT1_DIVIDE        = 2,
+	parameter CLKOUT2_DIVIDE        = 32,
+	parameter CLKOUT3_DIVIDE        = 8,
+	parameter MMCM_VCO              = 800,
+	parameter MMCM_MULT_F           = 4,
+	parameter MMCM_DIVCLK_DIVIDE    = 1,
+	
+	parameter SIMULATION            = "FALSE",
+	parameter TCQ                   = 100,
+	parameter DRAM_TYPE             = "DDR3",
+	parameter nCK_PER_CLK           = 4,
+	parameter DEBUG_PORT            = "OFF",
+	
+	parameter RST_ACT_LOW           = 1,
+`endif /* DRAM_SUPPORT */
 	parameter HASH_SIZE   = 32,
 	parameter KEY_SIZE    = 96, // 80bit + 32bit
 	parameter VAL_SIZE    = 32,
@@ -18,6 +64,10 @@ module db_cont #(
 	output wire    ui_mig_rst,
 	output wire    init_calib_complete,
 
+	inout  [63:0]  ddr3_dq,
+	inout  [ 7:0]  ddr3_dqs_n,
+	inout  [ 7:0]  ddr3_dqs_p,
+	output [15:0]  ddr3_addr,
 	output [ 2:0]  ddr3_ba,
 	output         ddr3_ras_n,
 	output         ddr3_cas_n,
@@ -197,7 +247,6 @@ assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, 4'b0100, 8'd0, sy
 
 
 
-
 `ifdef DRAM_SUPPORT
 /*
  * DRAM APP Interface 
@@ -254,7 +303,7 @@ wire [512+64+30+1+1-1:0] din_wrfifo, dout_wrfifo;
 wire wr_en_wrfifo, rd_en_wrfifo;
 wire empty_wrfifo, full_wrfifo;
 
-fifo_512 u_wrfifo (
+asfifo_608_64 u_wrfifo (
 	.rst      ( rst ),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
@@ -275,7 +324,7 @@ wire [30+1+1-1:0] din_rdfifo, dout_rdfifo;
 wire wr_en_rdfifo, rd_en_rdfifo;
 wire empty_rdfifo, full_rdfifo;
 
-fifo_512 u_rd_fifo (
+asfifo_32_64 u_rd_fifo (
 	.rst      ( rst ),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
@@ -289,23 +338,23 @@ fifo_512 u_rd_fifo (
 
 /*
  *  DRAM fifo (save)
- *      configuration: 32width x 64depth
+ *      configuration: 160 bit width x 64 depth
  *      width bitmap : 32(value) + 96(key) + 30(addr) + 1(reserved) + 1(vadid)
  */
 wire [32+96+30+1+1-1:0] din_savefifo, dout_savefifo;
 wire wr_en_savefifo, rd_en_savefifo;
 wire empty_savefifo, full_savefifo;
 
-fifo_512 u_rd_fifo (
+asfifo_160_64 u_save_fifo (
 	.rst      ( rst ),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( clk156 ), 
-	.din      ( din_fifo_in  ), 
-	.wr_en    ( wr_en_rdfifo ),
-	.rd_en    ( rd_en_rdfifo ),
-	.dout     ( dout_rdfifo  ), 
-	.full     ( full_rdfifo  ), 
-	.empty    ( empty_rdfifo ) 
+	.din      ( din_savefifo   ), 
+	.wr_en    ( wr_en_savefifo ),
+	.rd_en    ( rd_en_savefifo ),
+	.dout     ( dout_savefifo  ), 
+	.full     ( full_savefifo  ), 
+	.empty    ( empty_savefifo ) 
 );
 
 
@@ -320,13 +369,14 @@ localparam ARB_WR        = 2'b10;
 
 wire [2:0]   wr_fifo_cmd = (dout_wrfifo[1] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
 wire [2:0]   rd_fifo_cmd = (dout_wrfifo[0] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
-wire [29:0]  wrfifo_addr = dout_wrfifo[31:2];
-wire [29:0]  rdfifo_addr = dout_rdfifo[31:2];
+wire [29:0]  wr_fifo_addr = dout_wrfifo[31:2];
+wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
 wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data = dout_wrfifo[607:96];
 wire       fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
 
+reg  [1:0] arb_reg;
 wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
                         (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
                                        (dout_rdfifo[0]) ? ARB_RD : 2'b00;
@@ -342,14 +392,14 @@ always @ (posedge ui_mig_clk)
 	end
 
 
-reg          stage_valid0, stage_valid1, stage_valid2;
+reg          stage_valid_0, stage_valid_1, stage_valid_2;
 reg  [159:0] stage_data_0;
 wire [511:0] wr_data_pre;
 // FIFO assignment
 assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
 assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
-assign rd_en_savefifo = app_rd_valid;
-assign wr_en_wrfifo   = stage_valid0;
+assign rd_en_savefifo = app_rd_data_valid;
+assign wr_en_wrfifo   = stage_valid_0;
 assign wr_en_rdfifo   = in_valid;
 assign wr_en_savefifo = in_valid;
 assign din_rdfifo     = {in_hash[29:0], 2'b11};
@@ -357,12 +407,13 @@ assign din_wrfifo     = {wr_data_pre, stage_data_0[31:2], 2'b01};
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 
 // MIG assignment
-assign app_addr = rd_fifo_addr : wr_fifo_addr ;
-assign app_cmd  = rd_fifo_cmd : wr_fifo_cmd ;
+assign app_addr = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr ;
+assign app_cmd  = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd ;
 assign app_en = fifo_valid;
 assign app_wdf_data = wrfifo_data;
 assign app_wdf_wren = arb_switch == ARB_WR;
 assign app_wdf_end  = 1;
+assign app_wdf_mask = 0; // TODO
 
 // To support 1024bit data width of MIG,
 // you need to setup 4-7 regiseters.
@@ -378,7 +429,9 @@ wire key_lookup1 = slot1[95:0] == key_reg1;
 wire key_lookup2 = slot2[95:0] == key_reg2;
 wire key_lookup3 = slot3[95:0] == key_reg3;
 
-wire value_cmp0  = slot
+// Todo : value comparison logic
+// 
+//wire value_cmp0  = slot;
 
 wire table_hit = key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3;
 wire update_en   = stage_valid_0 & ~table_hit;
@@ -413,7 +466,7 @@ always @ (posedge clk156)
 		key_reg7    <= 0;
 	end else begin
 		if (init_calib_complete) begin
-			if (app_rd_valid) begin
+			if (app_rd_data_valid) begin
 				rd_data_buf <= app_rd_data;
 				key_reg0    <= dout_savefifo[127:32];
 				key_reg1    <= dout_savefifo[127:32];
@@ -487,7 +540,7 @@ dpram #(
 	.ADDR    (10),
 	.DWIDTH  (128)
 ) u_dpram (
-	.clka      (clk),    
+	.clka      (clk156),    
 	.ena       (ena),   
 	.wea       (wea),   
 	.addra     (hash_addr), 
@@ -496,7 +549,7 @@ dpram #(
 );
 `else
 dpram_128_262k u_dpram (
-	.clka      (clk),    
+	.clka      (clk156),    
 	.ena       (ena),   
 	.wea       (wea),   
 	.addra     (hash_addr), 
@@ -508,7 +561,7 @@ dpram_128_262k u_dpram (
 
 `ifdef DEBUG_ILA
 ila_0 u_ila (
-	.clk     (clk), // input wire clk
+	.clk     (clk156), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
 		//126'd0       ,

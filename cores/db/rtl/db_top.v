@@ -1,3 +1,5 @@
+`timescale 1ps/1ps
+
 module db_top #(
 	parameter KEY_SIZE = 96,
 	parameter VAL_SIZE = 32,
@@ -112,16 +114,16 @@ db_cont #(
 	.RAM_SIZE     (RAM_SIZE)
 ) u_db_cont (
 	/* System Interface */
-	.clk          (clk),
+	.clk156       (clk),
 	.rst          (rst),
 
+`ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	.sys_clk_p    (sys_clk_p),
 	.sys_clk_n    (sys_clk_p),
 	.ui_mig_clk   (),
 	.ui_mig_rst   (),
 	.init_calib_complete(init_calib_complete),
-
 	/* DDR3 SDRAM Interface */
 	.ddr3_addr       (ddr3_addr),
 	.ddr3_ba         (ddr3_ba),
@@ -138,7 +140,7 @@ db_cont #(
 	.ddr3_cs_n       (ddr3_cs_n),
 	.ddr3_dm         (ddr3_dm),
 	.ddr3_odt        (ddr3_odt),
-
+`endif 
 	/* Network Interface side */
 	.in_valid     (valid_reg),
 	.in_op        (flag_reg),
@@ -151,7 +153,7 @@ db_cont #(
 	.out_value    ()
 );
 
-
+`ifdef DEBUG_ILA
 ila_0 u_ila1 (
 	.clk     (clk), // input wire clk
 	/* verilator lint_off WIDTH */
@@ -164,5 +166,5 @@ ila_0 u_ila1 (
 		//126'd0          ,
 	})/* verilator lint_on WIDTH */ 
 );
-
+`endif /* DEBUG_ILA */
 endmodule

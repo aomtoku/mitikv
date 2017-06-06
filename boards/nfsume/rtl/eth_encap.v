@@ -1,4 +1,5 @@
 //`define DEBUG
+`timescale 1ps/1ps
 
 module eth_encap #(
 	parameter KEY_SIZE = 96,

@@ -17,7 +17,7 @@ create_project -part ${device} -in_memory
 
 set_property target_language Verilog [current_project]
 set_property default_lib work [current_project]
-set_property verilog_define { {USE_DDR3_FIFO=1} {USE_XPHY=1} {USE_PVTMON=1} } [current_fileset]
+set_property verilog_define { {DRAM_SUPPORT=1} } [current_fileset]
 
 update_ip_catalog -rebuild
 
@@ -46,8 +46,13 @@ foreach file $IP_SRC {
 	if {[string match *.xci $file]} {
 		puts "INFO: Import IP $file"
 		read_ip $file
-		synth_ip -force [get_files $file]
+		set_property GENERATE_SYNTH_CHECKPOINT FALSE [get_files $file]
+		#synth_ip -force [get_files $file]
+	} elseif {[string match *.xcix $file]} {
+		puts "INFO: Import IP $file"
+		read_ip $file
 	} elseif {[string match *.dcp $file]} {
+		puts "INFO: Import DCP $file"
 		read_checkpoint $file
 	} else {
 		puts "INFO: Unsupported File $file" 
@@ -60,7 +65,7 @@ generate_target {synthesis simulation} [get_ips]
 #set_property steps.phys_opt_design.is_enabled true [get_runs impl_1]
 #set_property strategy Performance_Explore [get_runs impl_1]
 
-synth_design -name dnskv -part ${device} -top top
+synth_design -name dnskv -part ${device} -top top -verilog_define DRAM_SUPPORT
 
 report_utilization -file ${outdir}/post_syn_util.txt
 report_timing -sort_by group -max_paths 5 -path_type summary -file ${outdir}/post_synth_timing.txt

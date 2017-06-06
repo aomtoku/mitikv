@@ -44,10 +44,28 @@ foreach file $RTL_SRC {
 
 puts "INFO: Import IP Sources ..."
 foreach file $IP_SRC {
-	read_ip $file
-	synth_ip -force [get_files $file]
-#	synth_ip [get_files $file]
+	if {[string match *.xci $file]} {
+		puts "INFO: Import IP $file"
+		read_ip $file
+		set_property GENERATE_SYNTH_CHECKPOINT FALSE [get_files $file]
+		#synth_ip -force [get_files $file]
+	} elseif {[string match *.xcix $file]} {
+		puts "INFO: Import IP $file"
+		read_ip $file
+		#set_property GENERATE_SYNTH_CHECKPOINT FALSE [get_files $file]
+	} elseif {[string match *.dcp $file]} {
+		puts "INFO: Import DCP $file"
+		read_checkpoint $file
+	} else {
+		puts "INFO: Unsupported File $file" 
+	}
 }
+#puts "INFO: Import IP Sources ..."
+#foreach file $IP_SRC {
+#	read_ip $file
+#	synth_ip -force [get_files $file]
+##	synth_ip [get_files $file]
+#}
 
 generate_target {synthesis simulation} [get_ips]
 

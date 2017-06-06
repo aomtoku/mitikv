@@ -1,3 +1,4 @@
+`timescale 1ps/1ps
 module eth_top #(
 	parameter PL_LINK_CAP_MAX_LINK_WIDTH = 2,
 	parameter C_DATA_WIDTH               = 64,
@@ -50,6 +51,7 @@ module eth_top #(
  */
 wire clk156;
 assign db_clk = clk156;
+`ifndef SIMULATION_DEBUG
 sfp_refclk_init sfp_refclk_init0 (
 	.CLK               (clk100),
 	.RST               (sys_rst),
@@ -59,6 +61,7 @@ sfp_refclk_init sfp_refclk_init0 (
 	.I2C_FPGA_SCL      (I2C_FPGA_SCL), //: inout std_logic;
 	.I2C_FPGA_SDA      (I2C_FPGA_SDA)  //: inout std_logic
 );
+`endif
 
 /*
  *  Ethernet Clock Domain : Reset
