@@ -182,7 +182,7 @@ always
 
 assign ref_clk_p = ref_clk_i;
 assign ref_clk_n = ~ref_clk_i;
-
+assign u_top.u_eth_top.clk156 = ref_clk_i;
 
 always @( * ) begin
 	ddr3_ck_p_sdram      <=  #(TPROP_PCB_CTRL) ddr3_ck_p_fpga;
@@ -373,59 +373,34 @@ wire        h1_m_axis_tx_tready;
 wire        h1_m_axis_tx_tuser ;
 wire        h1_m_axis_tx_tvalid;
 
-//axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
-//	.tx_axis_aresetn              (sys_rst_n),
-//	.rx_axis_aresetn              (sys_rst_n),
-//	.tx_ifg_delay                 (),
-//	.dclk                         (),
-//	.txp                          (ETH0_RX_P),
-//	.txn                          (ETH0_RX_N),
-//	.rxp                          (ETH0_TX_P),
-//	.rxn                          (ETH0_TX_N),
-//	.signal_detect                (),
-//	.tx_fault                     (),
-//	.tx_disable                   (),
-//	.pcspma_status                (),
-//	.sim_speedup_control          (),
-//	.rxrecclk_out                 (),
-//	.mac_tx_configuration_vector  (),
-//	.mac_rx_configuration_vector  (),
-//	.mac_status_vector            (),
-//	.pcs_pma_configuration_vector (),
-//	.pcs_pma_status_vector        (),
-//	.areset_coreclk               (),
-//	.txusrclk                     (),
-//	.txusrclk2                    (),
-//	.txoutclk                     (),
-//	.txuserrdy                    (),
-//	.tx_resetdone                 (),
-//	.rx_resetdone                 (),
-//	.coreclk                      (),
-//	.areset                       (),
-//	.gttxreset                    (),
-//	.gtrxreset                    (),
-//	.qplllock                     (),
-//	.qplloutclk                   (),
-//	.qplloutrefclk                (),
-//	.reset_counter_done           (),
-//	.s_axis_tx_tdata              (h0_s_axis_tx_tdata ),
-//	.s_axis_tx_tkeep              (h0_s_axis_tx_tkeep ),
-//	.s_axis_tx_tlast              (h0_s_axis_tx_tlast ),
-//	.s_axis_tx_tready             (h0_s_axis_tx_tready),
-//	.s_axis_tx_tuser              (h0_s_axis_tx_tuser ),
-//	.s_axis_tx_tvalid             (h0_s_axis_tx_tvalid),
-//	.s_axis_pause_tdata           (),
-//	.s_axis_pause_tvalid          (),
-//	.m_axis_rx_tdata              (h0_m_axis_tx_tdata ),
-//	.m_axis_rx_tkeep              (h0_m_axis_tx_tkeep ),
-//	.m_axis_rx_tlast              (h0_m_axis_tx_tlast ),
-//	.m_axis_rx_tuser              (h0_m_axis_tx_tuser ),
-//	.m_axis_rx_tvalid             (h0_m_axis_tx_tvalid),
-//	.tx_statistics_valid          (),
-//	.tx_statistics_vector         (),
-//	.rx_statistics_valid          (),
-//	.rx_statistics_vector         ()
-//);
+
+assign u_top.u_eth_top.s_axis_rx0_tvalid = h0_m_axis_tx_tvalid;
+assign u_top.u_eth_top.s_axis_rx0_tdata  = h0_m_axis_tx_tdata;
+assign u_top.u_eth_top.s_axis_rx0_tkeep  = h0_m_axis_tx_tkeep;
+assign u_top.u_eth_top.s_axis_rx0_tlast  = h0_m_axis_tx_tlast;
+assign u_top.u_eth_top.s_axis_rx0_tuser  = h0_m_axis_tx_tuser;
+
+assign u_top.u_eth_top.s_axis_rx1_tvalid = h1_m_axis_tx_tvalid;
+assign u_top.u_eth_top.s_axis_rx1_tdata  = h1_m_axis_tx_tdata;
+assign u_top.u_eth_top.s_axis_rx1_tkeep  = h1_m_axis_tx_tkeep;
+assign u_top.u_eth_top.s_axis_rx1_tlast  = h1_m_axis_tx_tlast;
+assign u_top.u_eth_top.s_axis_rx1_tuser  = h1_m_axis_tx_tuser;
+
+assign h0_s_axis_rx_tvalid = u_top.u_eth_top.m_axis_tx0_tvalid;
+assign h0_s_axis_rx_tdata  = u_top.u_eth_top.m_axis_tx0_tdata;
+assign h0_s_axis_rx_tkeep  = u_top.u_eth_top.m_axis_tx0_tkeep;
+assign h0_s_axis_rx_tlast  = u_top.u_eth_top.m_axis_tx0_tlast;
+assign h0_s_axis_rx_tuser  = u_top.u_eth_top.m_axis_tx0_tuser;
+assign u_top.u_eth_top.m_axis_tx0_tready = h0_s_axis_rx_tready;
+                        
+assign h1_s_axis_rx_tvalid = u_top.u_eth_top.m_axis_tx1_tvalid;
+assign h1_s_axis_rx_tready = u_top.u_eth_top.m_axis_tx1_tready;
+assign h1_s_axis_rx_tdata  = u_top.u_eth_top.m_axis_tx1_tdata;
+assign h1_s_axis_rx_tkeep  = u_top.u_eth_top.m_axis_tx1_tkeep;
+assign h1_s_axis_rx_tlast  = u_top.u_eth_top.m_axis_tx1_tlast;
+assign h1_s_axis_rx_tuser  = u_top.u_eth_top.m_axis_tx1_tuser;
+assign u_top.u_eth_top.m_axis_tx1_tready = h1_s_axis_rx_tready;
+
 
 /*
  *   Task
@@ -449,6 +424,41 @@ begin
 		waitaclk;
 end
 endtask
+
+/*      
+ *  +--+ -- Attack ----> mitiKV ---- Attack ----> +--+
+ *  |H0|                                          |H1|
+ *  +--+ <--- ICMP ---- mitiKV <----- ICMP ------ +--+
+ */
+
+task h0_attack_to_mitikv;
+begin
+	// First flit
+	h0_m_axis_tx_tvalid = 1'b1;
+	h0_m_axis_tx_tdata  = 64'h00;
+	h0_m_axis_tx_tkeep  = 8'hff;
+	h0_m_axis_tx_tlast  = 1'b0;
+	h0_m_axis_tx_tuser  = 1'b1;
+	waitclk(1);
+	h0_m_axis_tx_tdata  = 64'h00;
+	waitclk(1);
+	waitclk(1);
+	h0_m_axis_tx_tlast  = 1'b1;
+	waitclk(1);
+	h0_m_axis_tx_tvalid = 1'b0;
+	h0_m_axis_tx_tlast  = 1'b0;
+	h0_m_axis_tx_tuser  = 1'b0;
+	h0_m_axis_tx_tkeep  = 8'h00;
+end
+endtask
+
+/*
+ * ICMP port unreach
+ */
+always @ (posedge ref_clk_i) begin
+
+end
+
 
 // Monitoring init_calib_complete signal
 reg init_calib;

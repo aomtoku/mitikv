@@ -6,17 +6,7 @@ module eth_top #(
 	parameter KEY_SIZE                   = 96,
 	parameter VAL_SIZE                   = 32
 )(
-	input  wire                clk100,
-	input  wire                sys_rst,
-	output wire [7:0]          debug,
-
-	output wire                db_clk,
-	output wire [KEY_SIZE-1:0] in_key,
-	output wire [3:0]          in_flag,
-	output wire                in_valid,
-	input  wire                out_valid,
-	input  wire [3:0]          out_flag,
-
+`ifndef SIM_ETH_IP
 	input  wire                SFP_CLK_P,
 	input  wire                SFP_CLK_N,
 	output wire                SFP_REC_CLK_P,
@@ -43,7 +33,18 @@ module eth_top #(
 
 	input  wire                ETH1_TX_FAULT,
 	input  wire                ETH1_RX_LOS,
-	output wire                ETH1_TX_DISABLE
+	output wire                ETH1_TX_DISABLE,
+`endif /* SIM_ETH_IP */ 
+	input  wire                clk100,
+	input  wire                sys_rst,
+	output wire [7:0]          debug,
+
+	output wire                db_clk,
+	output wire [KEY_SIZE-1:0] in_key,
+	output wire [3:0]          in_flag,
+	output wire                in_valid,
+	input  wire                out_valid,
+	input  wire [3:0]          out_flag
 );
 
 /*
@@ -84,6 +85,7 @@ always @(posedge clk156)
  * Ethernet MAC and PCS/PMA Configuration
  */
 
+`ifndef SIM_ETH_IP
 wire [535:0] pcs_pma_configuration_vector;
 pcs_pma_conf pcs_pma_conf0(
 	.pcs_pma_configuration_vector(pcs_pma_configuration_vector)
@@ -95,6 +97,7 @@ eth_mac_conf eth_mac_conf0(
 	.mac_tx_configuration_vector(mac_tx_configuration_vector),
 	.mac_rx_configuration_vector(mac_rx_configuration_vector)
 );
+`endif /* SIM_ETH_IP */
 
 /*
  * AXI interface (Master : encap ---> MAC)
@@ -171,6 +174,7 @@ eth_encap #(
 );
 
 
+`ifndef SIM_ETH_IP
 /*
  * Ethernet MAC
  */
@@ -314,7 +318,8 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 	.rx_statistics_valid          (),  
 	.rx_statistics_vector         ()   
 );
-
+`endif /* SIM_ETH_IP */
+ 
 ///*
 // * Loopback FIFO
 // */
