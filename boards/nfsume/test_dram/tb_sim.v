@@ -346,60 +346,60 @@ top #(
 	.ETH1_TX_DISABLE        (ETH1_TX_DISABLE) 
 );
 
-wire [63:0] h0_s_axis_tx_tdata ;
-wire [7:0]  h0_s_axis_tx_tkeep ;
-wire        h0_s_axis_tx_tlast ;
-wire        h0_s_axis_tx_tready;
-wire        h0_s_axis_tx_tuser ;
-wire        h0_s_axis_tx_tvalid;
+reg [63:0] h0_s_axis_tx_tdata ;
+reg [7:0]  h0_s_axis_tx_tkeep ;
+reg        h0_s_axis_tx_tlast ;
+//reg        h0_s_axis_tx_tready;
+reg        h0_s_axis_tx_tuser ;
+reg        h0_s_axis_tx_tvalid;
 
-wire [63:0] h0_m_axis_tx_tdata ;
-wire [7:0]  h0_m_axis_tx_tkeep ;
-wire        h0_m_axis_tx_tlast ;
-wire        h0_m_axis_tx_tuser ;
-wire        h0_m_axis_tx_tvalid;
+wire [63:0] h0_m_axis_rx_tdata ;
+wire [7:0]  h0_m_axis_rx_tkeep ;
+wire        h0_m_axis_rx_tlast ;
+wire        h0_m_axis_rx_tuser ;
+wire        h0_m_axis_rx_tvalid;
+wire        h0_m_axis_rx_tready;
 
-wire [63:0] h1_s_axis_tx_tdata ;
-wire [7:0]  h1_s_axis_tx_tkeep ;
-wire        h1_s_axis_tx_tlast ;
-wire        h1_s_axis_tx_tready;
-wire        h1_s_axis_tx_tuser ;
-wire        h1_s_axis_tx_tvalid;
+reg [63:0] h1_s_axis_tx_tdata ;
+reg [7:0]  h1_s_axis_tx_tkeep ;
+reg        h1_s_axis_tx_tlast ;
+//reg        h1_s_axis_tx_tready;
+reg        h1_s_axis_tx_tuser ;
+reg        h1_s_axis_tx_tvalid;
 
-wire [63:0] h1_m_axis_tx_tdata ;
-wire [7:0]  h1_m_axis_tx_tkeep ;
-wire        h1_m_axis_tx_tlast ;
-wire        h1_m_axis_tx_tready;
-wire        h1_m_axis_tx_tuser ;
-wire        h1_m_axis_tx_tvalid;
+wire [63:0] h1_m_axis_rx_tdata ;
+wire [7:0]  h1_m_axis_rx_tkeep ;
+wire        h1_m_axis_rx_tlast ;
+wire        h1_m_axis_rx_tready;
+wire        h1_m_axis_rx_tuser ;
+wire        h1_m_axis_rx_tvalid;
 
+assign u_top.u_eth_top.s_axis_rx0_tvalid = h0_s_axis_tx_tvalid;
+assign u_top.u_eth_top.s_axis_rx0_tdata  = h0_s_axis_tx_tdata;
+assign u_top.u_eth_top.s_axis_rx0_tkeep  = h0_s_axis_tx_tkeep;
+assign u_top.u_eth_top.s_axis_rx0_tlast  = h0_s_axis_tx_tlast;
+assign u_top.u_eth_top.s_axis_rx0_tuser  = h0_s_axis_tx_tuser;
 
-assign u_top.u_eth_top.s_axis_rx0_tvalid = h0_m_axis_tx_tvalid;
-assign u_top.u_eth_top.s_axis_rx0_tdata  = h0_m_axis_tx_tdata;
-assign u_top.u_eth_top.s_axis_rx0_tkeep  = h0_m_axis_tx_tkeep;
-assign u_top.u_eth_top.s_axis_rx0_tlast  = h0_m_axis_tx_tlast;
-assign u_top.u_eth_top.s_axis_rx0_tuser  = h0_m_axis_tx_tuser;
+assign u_top.u_eth_top.s_axis_rx1_tvalid = h1_s_axis_tx_tvalid;
+assign u_top.u_eth_top.s_axis_rx1_tdata  = h1_s_axis_tx_tdata;
+assign u_top.u_eth_top.s_axis_rx1_tkeep  = h1_s_axis_tx_tkeep;
+assign u_top.u_eth_top.s_axis_rx1_tlast  = h1_s_axis_tx_tlast;
+assign u_top.u_eth_top.s_axis_rx1_tuser  = h1_s_axis_tx_tuser;
 
-assign u_top.u_eth_top.s_axis_rx1_tvalid = h1_m_axis_tx_tvalid;
-assign u_top.u_eth_top.s_axis_rx1_tdata  = h1_m_axis_tx_tdata;
-assign u_top.u_eth_top.s_axis_rx1_tkeep  = h1_m_axis_tx_tkeep;
-assign u_top.u_eth_top.s_axis_rx1_tlast  = h1_m_axis_tx_tlast;
-assign u_top.u_eth_top.s_axis_rx1_tuser  = h1_m_axis_tx_tuser;
-
-assign h0_s_axis_rx_tvalid = u_top.u_eth_top.m_axis_tx0_tvalid;
-assign h0_s_axis_rx_tdata  = u_top.u_eth_top.m_axis_tx0_tdata;
-assign h0_s_axis_rx_tkeep  = u_top.u_eth_top.m_axis_tx0_tkeep;
-assign h0_s_axis_rx_tlast  = u_top.u_eth_top.m_axis_tx0_tlast;
-assign h0_s_axis_rx_tuser  = u_top.u_eth_top.m_axis_tx0_tuser;
-assign u_top.u_eth_top.m_axis_tx0_tready = h0_s_axis_rx_tready;
+assign h0_m_axis_rx_tvalid = u_top.u_eth_top.m_axis_tx0_tvalid;
+assign h0_m_axis_rx_tdata  = u_top.u_eth_top.m_axis_tx0_tdata;
+assign h0_m_axis_rx_tkeep  = u_top.u_eth_top.m_axis_tx0_tkeep;
+assign h0_m_axis_rx_tlast  = u_top.u_eth_top.m_axis_tx0_tlast;
+assign h0_m_axis_rx_tuser  = u_top.u_eth_top.m_axis_tx0_tuser;
+assign u_top.u_eth_top.m_axis_tx0_tready = h0_m_axis_rx_tready;
                         
-assign h1_s_axis_rx_tvalid = u_top.u_eth_top.m_axis_tx1_tvalid;
-assign h1_s_axis_rx_tready = u_top.u_eth_top.m_axis_tx1_tready;
-assign h1_s_axis_rx_tdata  = u_top.u_eth_top.m_axis_tx1_tdata;
-assign h1_s_axis_rx_tkeep  = u_top.u_eth_top.m_axis_tx1_tkeep;
-assign h1_s_axis_rx_tlast  = u_top.u_eth_top.m_axis_tx1_tlast;
-assign h1_s_axis_rx_tuser  = u_top.u_eth_top.m_axis_tx1_tuser;
-assign u_top.u_eth_top.m_axis_tx1_tready = h1_s_axis_rx_tready;
+assign h1_s_axis_mx_tvalid = u_top.u_eth_top.m_axis_tx1_tvalid;
+assign h1_s_axis_mx_tready = u_top.u_eth_top.m_axis_tx1_tready;
+assign h1_s_axis_mx_tdata  = u_top.u_eth_top.m_axis_tx1_tdata;
+assign h1_s_axis_mx_tkeep  = u_top.u_eth_top.m_axis_tx1_tkeep;
+assign h1_s_axis_mx_tlast  = u_top.u_eth_top.m_axis_tx1_tlast;
+assign h1_s_axis_mx_tuser  = u_top.u_eth_top.m_axis_tx1_tuser;
+assign u_top.u_eth_top.m_axis_tx1_tready = h1_m_axis_rx_tready;
 
 
 /*
@@ -431,34 +431,109 @@ endtask
  *  +--+ <--- ICMP ---- mitiKV <----- ICMP ------ +--+
  */
 
+
+//
+//  Test Data generation
+//     $ mitikv/test/scripts/pcap2text <input_pcap>
+//
+
+// 00 45 00 08 00 00 00 00   00 00 00 00 00 00 00 00
+// 00 7f 01 00 00 7f 7b 2e   11 40 00 40 37 0e 39 00
+// 31 5c 01 01 51 50 38 fe   25 00 35 82 39 30 01 00
+// 33 33 5c 33 33 5c 32 32   5c 32 32 5c 31 31 5c 31
+// 0a 34 34 5c 34 34 5c
+
 task h0_attack_to_mitikv;
 begin
 	// First flit
-	h0_m_axis_tx_tvalid = 1'b1;
-	h0_m_axis_tx_tdata  = 64'h00;
-	h0_m_axis_tx_tkeep  = 8'hff;
-	h0_m_axis_tx_tlast  = 1'b0;
-	h0_m_axis_tx_tuser  = 1'b1;
+	h0_s_axis_tx_tvalid = 1'b1;
+	h0_s_axis_tx_tdata  = 64'h11005544_33221100;
+	h0_s_axis_tx_tkeep  = 8'hff;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b1;
 	waitclk(1);
-	h0_m_axis_tx_tdata  = 64'h00;
+	h0_s_axis_tx_tdata  = 64'h00450008_56443322;
 	waitclk(1);
+	h0_s_axis_tx_tdata  = 64'h11400040_370e3900;
 	waitclk(1);
-	h0_m_axis_tx_tlast  = 1'b1;
+	h0_s_axis_tx_tdata  = 64'h007f0100_007f7b2e;
 	waitclk(1);
-	h0_m_axis_tx_tvalid = 1'b0;
-	h0_m_axis_tx_tlast  = 1'b0;
-	h0_m_axis_tx_tuser  = 1'b0;
-	h0_m_axis_tx_tkeep  = 8'h00;
+	h0_s_axis_tx_tdata  = 64'h25003582_39300100;
+	waitclk(1);
+	h0_s_axis_tx_tdata  = 64'h315c0101_515038fe;
+	waitclk(1);
+	h0_s_axis_tx_tdata  = 64'h5c32325c_31315c31;
+	waitclk(1);
+	h0_s_axis_tx_tdata  = 64'h33335c33_335c3232;
+	waitclk(1);
+	h0_s_axis_tx_tkeep  = 8'b0111_1111;
+	h0_s_axis_tx_tdata  = 64'h000a3434_5c34345c;
+	h0_s_axis_tx_tlast  = 1'b1;
+	waitclk(1);
+	h0_s_axis_tx_tvalid = 1'b0;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b0;
+	h0_s_axis_tx_tkeep  = 8'h00;
 end
 endtask
 
-/*
- * ICMP port unreach
- */
-always @ (posedge ref_clk_i) begin
+// c0 45 00 08 00 00 00 00   00 00 00 00 00 00 00 00
+// 00 7f 01 00 00 7f fd 88   01 40 00 00 e8 f2 55 00
+// 37 0e 39 00 00 45 00 00   00 00 d6 e9 03 03 01 00
+// 39 30 01 00 00 7f 01 00   00 7f 7b 2e 11 40 00 40 
+// 31 31 5c 31 31 5c 01 01   51 50 38 fe 25 00 35 82
+// 5c 34 34 5c 33 33 5c 33   33 5c 32 32 5c 32 32 5c 
+// 0a 34 34                                        
 
+task h1_icmp_to_mitikv;
+begin
+	// First flit
+	h1_s_axis_tx_tvalid = 1'b1;
+	h1_s_axis_tx_tdata  = 64'h00;
+	h1_s_axis_tx_tkeep  = 8'hff;
+	h1_s_axis_tx_tlast  = 1'b0;
+	h1_s_axis_tx_tuser  = 1'b1;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h00000000_00000000;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'hc0450008_00000000;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h01400000_e8f25500;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h007f0100_007ffd88;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h0000d6e9_03030100;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h370e3900_00450000;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h007f7b2e_11400040;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h39300100_007f0100;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h515038fe_25003582;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h31315c31_315c0101;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h335c3232_5c32325c;
+	waitclk(1);
+	h1_s_axis_tx_tdata  = 64'h5c34345c_33335c33;
+	waitclk(1);
+	waitclk(1);
+	h1_s_axis_tx_tkeep  = 8'b0000_0111;
+	h1_s_axis_tx_tdata  = 64'h00000000_000a3434;
+	h1_s_axis_tx_tlast  = 1'b1;
+	waitclk(1);
+	h1_s_axis_tx_tvalid = 1'b0;
+	h1_s_axis_tx_tlast  = 1'b0;
+	h1_s_axis_tx_tuser  = 1'b0;
+	h1_s_axis_tx_tkeep  = 8'h00;
 end
+endtask
 
+
+//*******************************************************************
+// Monitoring mitiKV behavior
+//*******************************************************************
 
 // Monitoring init_calib_complete signal
 reg init_calib;
@@ -484,6 +559,42 @@ always @ (posedge u_top.u_eth_top.clk156)
 		$display("Clk[%8d]\tETH_RST is asserted", sys_cnt);
 		$write("%c[0m",27); 
 		DEBUG_ETH_RESET <= 1'b1;
+	end
+// Monitoring ICMP port unreachable message
+always @ (posedge u_top.u_eth_top.clk156) 
+	if (u_top.u_eth_top.u_eth_encap.filter_mode) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t ICMP port unreachable message is found.", 
+			sys_cnt);
+		$display("\tThe flow below is inserted into mitiKV table.");
+		$display("\t\tSrc  IP addr  : %d.%d.%d.%d", 
+			u_top.u_eth_top.u_eth_encap.filter_src_ip[31:24], 
+			u_top.u_eth_top.u_eth_encap.filter_src_ip[23:16], 
+			u_top.u_eth_top.u_eth_encap.filter_src_ip[15:8], 
+			u_top.u_eth_top.u_eth_encap.filter_src_ip[7:0]);
+		$display("\t\tDest IP addr  : %d.%d.%d.%d", 
+			u_top.u_eth_top.u_eth_encap.filter_dst_ip[31:24], 
+			u_top.u_eth_top.u_eth_encap.filter_dst_ip[23:16], 
+			u_top.u_eth_top.u_eth_encap.filter_dst_ip[15:8], 
+			u_top.u_eth_top.u_eth_encap.filter_dst_ip[7:0]);
+		$display("\t\tSrc  UDP port : %d", 
+			u_top.u_eth_top.u_eth_encap.filter_src_udp);
+		$display("\t\tDest UDP port : %d", 
+			u_top.u_eth_top.u_eth_encap.filter_dst_udp);
+		//$display("\t\tHash value    : %d", );
+		$write("%c[0m",27); 
+	end
+
+always @ (posedge u_top.u_eth_top.clk156) 
+	if (u_top.u_eth_top.u_eth_encap.filter_block) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t Packet is filtered.", sys_cnt);
+		//$display("\t\tSrc  IP addr  : %d.%d.%d.%d", );
+		//$display("\t\tDest IP addr  : %d.%d.%d.%d", );
+		//$display("\t\tSrc  UDP port : %d", );
+		//$display("\t\tDest UDP port : %d", );
+		//$display("\t\tHash value    : %d", );
+		$write("%c[0m",27); 
 	end
 //*******************************************************************
 // Memory Models instantiations
@@ -528,7 +639,11 @@ initial begin
 
 	wait (u_top.u_db_top.u_db_cont.init_calib_complete);
 	waitclk(10);
-	wait (DEBUG_ETH_RESET);
+
+	h0_attack_to_mitikv;
+	waitclk(40);
+	h1_icmp_to_mitikv;
+	waitclk(40);
 	$display("================================================");
 	$display("Simulation finishes.");
 

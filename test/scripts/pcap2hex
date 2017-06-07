@@ -1,0 +1,14 @@
+#!/bin/sh
+
+
+usage () {
+	echo "usage: pcap2hex <pcap file>"
+}
+
+pcap=$1
+if [ ! -f $pcap ] ; then
+	usage
+	exit
+fi
+
+tshark -x -r ${pcap} | sed -n 's/^[0-9a-f][0-9a-f]*  \(.*  \) .*/\1/p'  | perl -ane '$,=" "; print reverse @F; print "\n";'
