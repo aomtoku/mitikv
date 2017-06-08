@@ -551,6 +551,49 @@ begin
 end
 endtask
 
+// TCP
+// 00 45 00 08 e0 fe 95 2b   d0 74 01 f0 9f 0c 00 00
+// 3a d8 76 61 e8 80 bb 05   06 40 00 40 4d a8 34 00
+// 10 80 3a 39 bb 7d 30 02   fd ca bb 01 28 af 22 d2
+// e2 70 80 35 4c 00 0a 08   01 01 00 00 9e 0b 6a 01
+// 44 01
+
+
+task tcp_traffic;
+begin
+	// First flit
+	h0_s_axis_tx_tvalid = 1'b1;
+	h0_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
+	h0_s_axis_tx_tkeep  = 8'hff;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h06400040_4da83400;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h3ad87661_e880bb05;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'hfdcabb01_28af22d2;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h10803a39_bb7d3002;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h01010000_9e0b6a01;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'he2708035_4c000a08;
+	waitethclk(1);
+	h0_s_axis_tx_tkeep  = 8'b0000_0011;
+	h0_s_axis_tx_tdata  = 64'h00000000_00004401;
+	h0_s_axis_tx_tlast  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tvalid = 1'b0;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b0;
+	h0_s_axis_tx_tkeep  = 8'h00;
+
+end
+endtask
+
 
 // c0 45 00 08 00 00 00 00   00 00 00 00 00 00 00 00
 // 00 7f 01 00 00 7f fd 88   01 40 00 00 e8 f2 55 00
@@ -730,12 +773,18 @@ initial begin
 	$display("Simulation begins.");
 	$display("================================================");
 
-	wait (u_top.u_db_top.u_db_cont.init_calib_complete);
+	//wait (u_top.u_db_top.u_db_cont.init_calib_complete);
 	barriersync_eth;
 	waitethclk(10);
-	waitethclk(300);
+	//waitethclk(300);
 
 	h0_attack_to_mitikv;
+	waitethclk(1);
+	tcp_traffic;
+	waitethclk(1);
+	tcp_traffic;
+	waitethclk(1);
+	tcp_traffic;
 	waitethclk(40);
 	h1_icmp_to_mitikv;
 	waitethclk(40);

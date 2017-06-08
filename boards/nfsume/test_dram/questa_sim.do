@@ -80,6 +80,7 @@ vlog ../ip_catalog/sume_ddr_mig/sume_ddr_mig/user_design/rtl/sume_ddr_mig_mig_si
 vlog axi_10g_ethernet_0_sim_netlist.v
 vlog axi_10g_ethernet_nonshared_sim_netlist.v
 vlog axis_data_fifo_0_sim_netlist.v
+vlog axis_interconnect_0_sim_netlist.v
 vlog ../ip_catalog/asfifo_160_64/asfifo_160_64_sim_netlist.v
 vlog ../ip_catalog/asfifo_32_64/asfifo_32_64_sim_netlist.v
 vlog ../ip_catalog/asfifo_608_64/asfifo_608_64_sim_netlist.v
@@ -92,7 +93,7 @@ vlog ../../../cores/db/rtl/crc32.v
 #Compile files in sim folder (excluding model parameter file)#
 vlog +define+SIMULATION_DEBUG +define+DRAM_SUPPORT ../rtl/top.v 
 vlog +define+SIMULATION_DEBUG ../rtl/eth_top.v
-vlog ../rtl/eth_encap.v
+vlog +define+DEBUG ../rtl/eth_encap.v
 vlog ../rtl/eth_mac_conf.v
 vlog ../rtl/pcs_pma_conf.v
 vlog ../rtl/prbs.v
@@ -116,7 +117,8 @@ onerror {resume}
 #View sim_tb_top signals in waveform#
 add wave sim:/tb_sim/*
 add wave sim:/tb_sim/u_top/u_db_top/u_db_cont/*
-add wave sim:/tb_sim/u_top/u_eth_top/*
+#add wave sim:/tb_sim/u_top/u_eth_top/*
+add wave sim:/tb_sim/u_top/u_eth_top/u_eth_encap/*
 #Change radix to Hexadecimal#
 radix hex
 #Supress Numeric Std package and Arith package warnings.#
