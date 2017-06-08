@@ -68,7 +68,10 @@ sfp_refclk_init sfp_refclk_init0 (
  *  Ethernet Clock Domain : Reset
  */
 reg [13:0] cold_counter = 0; 
-reg        eth_rst;
+wire       eth_rst;
+reg        eth_rst_reg;
+`ifndef SIM_ETH_IP
+assign eth_rst = eth_rst_reg;
 always @(posedge clk156) 
 `ifndef SIMULATION_DEBUG
 	if (cold_counter != 14'h3fff) begin
@@ -76,9 +79,10 @@ always @(posedge clk156)
 	if (cold_counter != 14'h9) begin
 `endif /* SIMULATION_DEBUG */
 		cold_counter <= cold_counter + 14'd1;
-		eth_rst      <= 1'b1;
+		eth_rst_reg  <= 1'b1;
 	end else
-		eth_rst <= 1'b0;
+		eth_rst_reg  <= 1'b0;
+`endif /* SIM_ETH_IP */
 
 
 /*
@@ -135,7 +139,7 @@ wire [ 7:0] eth_debug;
 eth_encap #(
 	.KEY_SIZE  (96),
 	.VAL_SIZE  (32)
-)eth_encap0 (
+) u_eth_encap (
 	.clk156           (clk156),
 	.eth_rst          (eth_rst),
 	.debug            (eth_debug),

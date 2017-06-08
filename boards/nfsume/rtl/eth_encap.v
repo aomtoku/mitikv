@@ -118,16 +118,38 @@ assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0
 //wire [ 7:0] p1_axis_tkeep;
 //wire [63:0] p1_axis_tdata;
 //assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
-wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
-                    rx1_ip_proto  == IP_PROTO_ICMP     &&
-                    rx1_icmp_type == ICMP_DEST_UNREACH &&
-                    (rx1_icmp_code == ICMP_PORT_UNREACH ||
-					 rx1_icmp_code == ICMP_ADMIN_PROHIB);
+
+//reg filter_mode_next;
+reg s_axis_rx1_tlast_reg;
+reg filter_mode;
+always @ (*) begin
+	filter_mode = 1'b0;
+
+	if (s_axis_rx1_tlast_reg)
+		filter_mode = 1'b0;
+
+	if (rx1_ftype  == ETH_FTYPE_IP          && 
+        rx1_ip_proto  == IP_PROTO_ICMP      &&
+        rx1_icmp_type == ICMP_DEST_UNREACH  &&
+        (rx1_icmp_code == ICMP_PORT_UNREACH ||
+		 rx1_icmp_code == ICMP_ADMIN_PROHIB)) begin
+		filter_mode = 1'b1;
+	end
+end
+
+// wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
+//                     rx1_ip_proto  == IP_PROTO_ICMP     &&
+//                     rx1_icmp_type == ICMP_DEST_UNREACH &&
+//                     (rx1_icmp_code == ICMP_PORT_UNREACH ||
+// 					 rx1_icmp_code == ICMP_ADMIN_PROHIB);
 wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_ip_proto  == IP_PROTO_UDP      &&
                     rx0_src_uport == DNS_SERV_PORT;
 reg  filtered;
 wire filter_block = filtered || (out_valid && out_flag[2:1] == 2'b10);
+
+always @ (posedge clk156)
+	s_axis_rx1_tlast_reg <= s_axis_rx1_tlast;
 
 always @ (posedge clk156) begin
 	if (eth_rst) begin

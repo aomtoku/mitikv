@@ -145,7 +145,7 @@ initial begin
 end
 
 assign sys_rst = RST_ACT_LOW ? sys_rst_n : ~sys_rst_n;
-
+assign u_top.u_eth_top.eth_rst = ~sys_rst_n;
 
 
 //*****************************************************************
@@ -401,7 +401,8 @@ assign h1_s_axis_mx_tlast  = u_top.u_eth_top.m_axis_tx1_tlast;
 assign h1_s_axis_mx_tuser  = u_top.u_eth_top.m_axis_tx1_tuser;
 assign u_top.u_eth_top.m_axis_tx1_tready = h1_m_axis_rx_tready;
 
-
+assign h0_m_axis_rx_tready = 1'b1;
+assign h1_m_axis_rx_tready = 1'b1;
 /*
  *   Task
  */ 
@@ -410,18 +411,39 @@ reg [31:0] sys_cnt = 0;
 always @ (posedge u_top.clk200)
 	sys_cnt <= sys_cnt + 1;
 
-task waitaclk;
+task waitamemclk;
 begin
 	@(posedge u_top.clk200);
 end
 endtask
 
-task waitclk;
+task waitmemclk;
 input integer max;
 integer i;
 begin
 	for (i = 0; i < max; i = i + 1)
-		waitaclk;
+		waitamemclk;
+end
+endtask
+
+task waitaethclk;
+begin
+	@(posedge u_top.u_eth_top.clk156);
+end
+endtask
+
+task waitethclk;
+input integer max;
+integer i;
+begin
+	for (i = 0; i < max; i = i + 1)
+		waitaethclk;
+end
+endtask
+
+task barriersync_eth;
+begin
+	wait(u_top.u_eth_top.clk156);
 end
 endtask
 
@@ -451,31 +473,84 @@ begin
 	h0_s_axis_tx_tkeep  = 8'hff;
 	h0_s_axis_tx_tlast  = 1'b0;
 	h0_s_axis_tx_tuser  = 1'b1;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h00450008_56443322;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h11400040_370e3900;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h007f0100_007f7b2e;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h25003582_39300100;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h315c0101_515038fe;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h5c32325c_31315c31;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h33335c33_335c3232;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tkeep  = 8'b0111_1111;
 	h0_s_axis_tx_tdata  = 64'h000a3434_5c34345c;
 	h0_s_axis_tx_tlast  = 1'b1;
-	waitclk(1);
+	waitethclk(1);
 	h0_s_axis_tx_tvalid = 1'b0;
 	h0_s_axis_tx_tlast  = 1'b0;
 	h0_s_axis_tx_tuser  = 1'b0;
 	h0_s_axis_tx_tkeep  = 8'h00;
 end
 endtask
+
+// 00 45 00 08 e0 fe 95 2b   d0 74 01 f0 9f 0c 00 00
+// a8 c0 76 61 e8 80 1f b1   11 40 00 40 4a dc 52 00
+// cc bb aa 99 88 77 66 55   44 33 34 12 39 30 2a 0a
+// 00 cc bb aa 99 88 77 66   55 44 33 22 11 ff ee dd
+// 20 11 22 33 44 55 66 77   88 99 aa bb cc dd ee ff
+// 60 50 40 30 20 11 60 50   40 30 20 11 60 50 40 30
+ 
+// Src  IP addr  : 192.168. 10.100
+// Dest IP addr  : 192.168. 10.101
+// Src  UDP port : 12345
+// Dest UDP port :  4660
+
+task h0_attack_to_mitikv_type1;
+begin
+	// First flit
+	h0_s_axis_tx_tvalid = 1'b1;
+	h0_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
+	h0_s_axis_tx_tkeep  = 8'hff;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h11400040_4adc5200;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'ha8c02b0a_a8c01fb1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h44333412_39302a0a;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'hccbbaa99_88776655;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h55443322_11ffeedd;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00ccbbaa_99887766;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h8899aabb_ccddeeff;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h20112233_44556677;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h40302011_60504030;
+	waitethclk(1);
+	h0_s_axis_tx_tkeep  = 8'b1111_1111;
+	h0_s_axis_tx_tdata  = 64'h60504030_20116050;
+	h0_s_axis_tx_tlast  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tvalid = 1'b0;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b0;
+	h0_s_axis_tx_tkeep  = 8'h00;
+end
+endtask
+
 
 // c0 45 00 08 00 00 00 00   00 00 00 00 00 00 00 00
 // 00 7f 01 00 00 7f fd 88   01 40 00 00 e8 f2 55 00
@@ -485,44 +560,61 @@ endtask
 // 5c 34 34 5c 33 33 5c 33   33 5c 32 32 5c 32 32 5c 
 // 0a 34 34                                        
 
+// 00 45 00 08 e0 fe 95 2b   d0 74 01 f0 9f 0c 00 00
+// a8 c0 76 61 e8 80 c7 ee   01 40 00 40 96 9e 6e 00
+// 44 33 22 11 00 00 02 01   01 01 f9 fa 03 03 2a 0a
+// 39 30 65 0a a8 c0 64 0a   a8 c0 aa 99 88 77 66 55
+// 11 ff ee dd cc bb aa 99   88 77 66 55 44 33 34 12
+// cc dd ee ff 00 cc bb aa   99 88 77 66 55 44 33 22
+// 60 50 40 30 20 11 22 33   44 55 66 77 88 99 aa bb
+//             60 50 40 30   20 11 60 50 40 30 20 11
+
+// Src  IP addr  : 192.168. 10.100
+// Dest IP addr  : 192.168. 10.101
+// Src  UDP port : 12345
+// Dest UDP port :  4660
+
 task h1_icmp_to_mitikv;
 begin
 	// First flit
 	h1_s_axis_tx_tvalid = 1'b1;
-	h1_s_axis_tx_tdata  = 64'h00;
+	h1_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
 	h1_s_axis_tx_tkeep  = 8'hff;
 	h1_s_axis_tx_tlast  = 1'b0;
 	h1_s_axis_tx_tuser  = 1'b1;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h00000000_00000000;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'hc0450008_00000000;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h01400000_e8f25500;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h007f0100_007ffd88;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h0000d6e9_03030100;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h370e3900_00450000;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h007f7b2e_11400040;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h39300100_007f0100;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h515038fe_25003582;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h31315c31_315c0101;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h335c3232_5c32325c;
-	waitclk(1);
-	h1_s_axis_tx_tdata  = 64'h5c34345c_33335c33;
-	waitclk(1);
-	waitclk(1);
-	h1_s_axis_tx_tkeep  = 8'b0000_0111;
-	h1_s_axis_tx_tdata  = 64'h00000000_000a3434;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h01400040_969e6e00;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'ha8c07661_e880c7ee;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h0101f9fa_03032a0a;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h44332211_00000201;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'ha8c0aa99_88776655;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h3930650a_a8c0640a;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h88776655_44333412;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h11ffeedd_ccbbaa99;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h99887766_55443322;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'hccddeeff_00ccbbaa;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h44556677_8899aabb;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h60504030_20112233;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h20116050_40302011;
+	waitethclk(1);
+	h1_s_axis_tx_tkeep  = 8'b0000_1111;
+	h1_s_axis_tx_tdata  = 64'h00000000_60504030;
 	h1_s_axis_tx_tlast  = 1'b1;
-	waitclk(1);
+	waitethclk(1);
 	h1_s_axis_tx_tvalid = 1'b0;
 	h1_s_axis_tx_tlast  = 1'b0;
 	h1_s_axis_tx_tuser  = 1'b0;
@@ -562,7 +654,8 @@ always @ (posedge u_top.u_eth_top.clk156)
 	end
 // Monitoring ICMP port unreachable message
 always @ (posedge u_top.u_eth_top.clk156) 
-	if (u_top.u_eth_top.u_eth_encap.filter_mode) begin
+	if (u_top.u_eth_top.u_eth_encap.filter_mode
+			& u_top.u_eth_top.u_eth_encap.in_valid) begin
 		$write("%c[1;34m",27); 
 		$display("Clk[%8d]\t ICMP port unreachable message is found.", 
 			sys_cnt);
@@ -638,12 +731,19 @@ initial begin
 	$display("================================================");
 
 	wait (u_top.u_db_top.u_db_cont.init_calib_complete);
-	waitclk(10);
+	barriersync_eth;
+	waitethclk(10);
+	waitethclk(300);
 
 	h0_attack_to_mitikv;
-	waitclk(40);
+	waitethclk(40);
 	h1_icmp_to_mitikv;
-	waitclk(40);
+	waitethclk(40);
+	h0_attack_to_mitikv_type1;
+	waitethclk(5);
+	h0_attack_to_mitikv_type1;
+	waitethclk(5);
+
 	$display("================================================");
 	$display("Simulation finishes.");
 
