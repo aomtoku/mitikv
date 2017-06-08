@@ -159,6 +159,7 @@ always @(posedge clk200)
 /*
  *  Ethernet Top Instance
  */
+wire                eth_rst;
 localparam KEY_SIZE = 96;
 wire [KEY_SIZE-1:0] in_key;
 wire [3:0]          in_flag, out_flag;
@@ -170,6 +171,7 @@ eth_top #(
 ) u_eth_top (
 	.clk100             (clk100),
 	.sys_rst            (sys_rst),
+	.eth_rst            (eth_rst),
 	.debug              (LED),
 	
 	/* KVS Interface */
@@ -217,7 +219,7 @@ db_top #(
 ) u_db_top (
 	.clk              (db_clk),
 `ifndef SIMULATION_DEBUG
-	.rst              (sys_rst), 
+	.rst              (eth_rst), 
 `else
 	.rst              (!sys_rst_n), 
 `endif

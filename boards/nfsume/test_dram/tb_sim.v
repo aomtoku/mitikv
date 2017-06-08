@@ -837,7 +837,7 @@ initial begin
 	$display("Simulation begins.");
 	$display("================================================");
 
-	//wait (u_top.u_db_top.u_db_cont.init_calib_complete);
+	wait (u_top.u_db_top.u_db_cont.init_calib_complete);
 	barriersync_eth;
 	waitethclk(10);
 	waitethclk(300);

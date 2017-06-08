@@ -37,6 +37,7 @@ module eth_top #(
 `endif /* SIM_ETH_IP */ 
 	input  wire                clk100,
 	input  wire                sys_rst,
+	output wire                eth_rst,
 	output wire [7:0]          debug,
 
 	output wire                db_clk,
@@ -68,7 +69,6 @@ sfp_refclk_init sfp_refclk_init0 (
  *  Ethernet Clock Domain : Reset
  */
 reg [13:0] cold_counter = 0; 
-wire       eth_rst;
 reg        eth_rst_reg;
 `ifndef SIM_ETH_IP
 assign eth_rst = eth_rst_reg;

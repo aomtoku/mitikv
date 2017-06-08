@@ -256,7 +256,7 @@ wire              wr_en_rdfifo, rd_en_rdfifo;
 wire              empty_rdfifo, full_rdfifo;
 
 asfifo_32_64 u_rd_fifo (
-	.rst      ( rst ),  
+	.rst      ( rst | ui_mig_rst),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
 	.din      ( din_fifo_in  ), 
@@ -305,12 +305,24 @@ wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
 wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data = dout_wrfifo[607:96];
-wire         fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
+wire         fifo_valid  = ~empty_rdfifo | ~empty_wrfifo;
 
 reg  [1:0] arb_reg;
-wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
-                        (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
-                                       (dout_rdfifo[0]) ? ARB_RD : 2'b00;
+reg  [1:0] arb_switch;
+//wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
+//                        (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
+//                                       (dout_rdfifo[0]) ? ARB_RD : 2'b00;
+always @ (*) begin
+	arb_switch = 0;
+
+	if (~empty_rdfifo & ~empty_wrfifo)
+		arb_switch = arb_reg;
+	else if (app_wdf_rdy && ~empty_wrfifo)
+		arb_switch = ARB_WR;
+	else if (~empty_rdfifo)
+		arb_switch = ARB_RD;
+
+end
 
 /*
  *  Write Data using RANDOM(PRBS-based) as Placement
@@ -329,9 +341,9 @@ always @ (posedge ui_mig_clk)
 	if (ui_mig_rst)
 		arb_reg <= ARB_RD;
 	else begin
-		if (dout_rdfifo[0] & dout_wrfifo[0] && arb_reg == ARB_RD)
+		if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_RD)
 			arb_reg <= ARB_WR;
-		else if (dout_rdfifo[0] & dout_wrfifo[0] && arb_reg == ARB_WR)  
+		else if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_WR)  
 			arb_reg <= ARB_WR;
 	end
 
@@ -376,7 +388,7 @@ wire key_lookup3 = slot3[95:0] == key_reg3;
 // 
 //wire value_cmp0  = slot;
 
-wire table_hit = key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3;
+wire table_hit = stage_valid_0 & (key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3);
 wire update_en   = stage_valid_0 & ~table_hit;
 
 assign slot0 = rd_data_buf[127:0];
