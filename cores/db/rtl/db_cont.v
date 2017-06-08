@@ -158,95 +158,6 @@ wire [VAL_SIZE-1:0] dpram_out_val, dpram_in_val;
 wire wea = state == UPDATE;
 wire ena = 1'b1;
 
-always @ (posedge clk156)
-	if (rst) begin
-		judge       <=    0;
-		state       <= IDLE;
-		fetched_key <=    0;
-		fetched_val <=    0;
-		out_valid   <=    0;
-		out_flag    <=    0;
-	end else begin
-		valid_reg0 <= in_valid;
-		valid_reg1 <= valid_reg0;
-		valid_reg2 <= valid_reg1;
-		valid_reg3 <= valid_reg2;
-		case (state)
-			IDLE  : begin
-				judge <= 0;
-				out_valid <= 0;
-				out_flag  <= 0;
-				if (valid_reg0) begin
-					fetched_key <= dpram_out_key;
-					fetched_val <= dpram_out_val;
-					if (in_key == dpram_out_key) 
-						state <= CHECK;
-					else
-						state <= MISS;
-				end
-			end
-			CHECK : if (fetched_val[15:0] < sys_cnt[15:0]) begin
-				// Time is Okay
-				judge <= 0;
-				if (in_op[0] == SET_REQ)
-					state <= UPDATE;
-				else
-					state <= IDLE;
-				out_valid <= 1;
-				out_flag  <= fetched_val[27:24];
-			end else begin  // Time is Expired
-				if (in_op[0] == SET_REQ) begin
-					state <= UPDATE;
-					case (in_op[2:1])
-						IDLE_STATE   : begin
-							state <= IDLE;
-							out_flag  <= fetched_val[27:24];
-						end
-						SUSPECT_STATE: begin
-							if (fetched_state[1] == 0) begin
-								state <= UPDATE;
-								out_flag  <= 4'b0100;
-							end else begin
-								state <= IDLE;
-								out_flag  <= fetched_val[27:24];
-							end
-						end
-						ARREST_STATE: begin
-							state <= UPDATE;
-							out_flag  <= fetched_val[27:24];
-						end
-						EXPIRE_STATE: begin
-							state <= IDLE;
-							out_flag  <= fetched_val[27:24];
-						end
-					endcase
-				end else begin // GET request
-					state     <= IDLE;
-					judge     <= 1;
-					out_flag  <= fetched_val[27:24];
-				end
-				out_valid <= 1;
-			end
-			MISS  : if (in_op[0] == SET_REQ)
-				state <= UPDATE;
-			else // in_op == GET
-				state <= IDLE;
-			UPDATE: begin
-				state <= IDLE;
-			end
-			default : state <= IDLE;
-		endcase
-	end
-
-
-assign dpram_in_key = in_key;
-//assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, fetched_flag, 8'd0, sys_cnt[15:0]} : 
-//{4'd0, in_op, 8'd0, sys_cnt[15:0]};
-assign dpram_in_val = (fetched_state == ARREST_STATE) ? {4'd0, 4'b0100, 8'd0, sys_cnt[15:0]} : 
-{4'd0, 4'b0100, 8'd0, sys_cnt[15:0]};
-
-
-
 `ifdef DRAM_SUPPORT
 /*
  * DRAM APP Interface 
@@ -259,24 +170,24 @@ localparam APP_DATA_WIDTH        = 2 * nCK_PER_CLK * PAYLOAD_WIDTH;
 localparam APP_MASK_WIDTH        = APP_DATA_WIDTH / 8;
 
 function integer clogb2 (input integer size);
-    begin
-      size = size - 1;
-      for (clogb2=1; size>1; clogb2=clogb2+1)
-        size = size >> 1;
-    end
-  endfunction // clogb2
+begin
+	size = size - 1;
+	for (clogb2=1; size>1; clogb2=clogb2+1)
+		size = size >> 1;
+end
+endfunction // clogb2
 
-  function integer STR_TO_INT;
-    input [7:0] in;
-    begin
-      if(in == "8")
-        STR_TO_INT = 8;
-      else if(in == "4")
-        STR_TO_INT = 4;
-      else
-        STR_TO_INT = 0;
-    end
-  endfunction
+function integer STR_TO_INT;
+input [7:0] in;
+begin
+	if (in == "8")
+		STR_TO_INT = 8;
+	else if (in == "4")
+		STR_TO_INT = 4;
+	else
+		STR_TO_INT = 0;
+end
+endfunction
 
 wire [(2*nCK_PER_CLK)-1:0]            app_ecc_multiple_err;
 wire [ADDR_WIDTH-1:0]                 app_addr;
@@ -300,8 +211,8 @@ wire                                  app_wdf_wren;
  *      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
  */
 wire [512+64+30+1+1-1:0] din_wrfifo, dout_wrfifo;
-wire wr_en_wrfifo, rd_en_wrfifo;
-wire empty_wrfifo, full_wrfifo;
+wire                     wr_en_wrfifo, rd_en_wrfifo;
+wire                     empty_wrfifo, full_wrfifo;
 
 asfifo_608_64 u_wrfifo (
 	.rst      ( rst ),  
@@ -316,13 +227,33 @@ asfifo_608_64 u_wrfifo (
 );
 
 /*
+ *  DRAM fifo (update)
+ *      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
+ */
+wire [512+64+30+1+1-1:0] din_upfifo, dout_upfifo;
+wire                     wr_en_upfifo, rd_en_upfifo;
+wire                     empty_upfifo, full_upfifo;
+
+asfifo_608_64 u_upfifo (
+	.rst      ( rst ),  
+	.wr_clk   ( clk156 ),  
+	.rd_clk   ( ui_mig_clk   ), 
+	.din      ( din_upfifo   ), 
+	.wr_en    ( wr_en_upfifo ),
+	.rd_en    ( rd_en_upfifo ),
+	.dout     ( dout_upfifo  ), 
+	.full     ( full_upfifo  ), 
+	.empty    ( empty_upfifo ) 
+);
+
+/*
  *  DRAM fifo (rd)
  *      configuration: 32width x 64depth
  *      width bitmap : 30(addr) + 1(cmd) + 1(vadid)
  */
 wire [30+1+1-1:0] din_rdfifo, dout_rdfifo;
-wire wr_en_rdfifo, rd_en_rdfifo;
-wire empty_rdfifo, full_rdfifo;
+wire              wr_en_rdfifo, rd_en_rdfifo;
+wire              empty_rdfifo, full_rdfifo;
 
 asfifo_32_64 u_rd_fifo (
 	.rst      ( rst ),  
@@ -374,12 +305,25 @@ wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
 wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data = dout_wrfifo[607:96];
-wire       fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
+wire         fifo_valid  = dout_rdfifo[0] | dout_wrfifo[0];
 
 reg  [1:0] arb_reg;
 wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
                         (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
                                        (dout_rdfifo[0]) ? ARB_RD : 2'b00;
+
+/*
+ *  Write Data using RANDOM(PRBS-based) as Placement
+ */ 
+wire [31:0] rand;
+wire [511:0] rand_wrdata = (rand[3:2] == 0) ? {384'h0, in_key, in_value} :
+                           (rand[3:2] == 1) ? {256'h0, in_key, in_value, 128'h0} :
+                           (rand[3:2] == 2) ? {128'h0, in_key, in_value, 256'h0} :
+                           (rand[3:2] == 3) ? {in_key, in_value, 384'h0} : 512'h0;
+wire [63:0] rand_wrstrb = (rand[3:2] == 0) ? 64'h0000_0000_0000_ffff :
+                          (rand[3:2] == 1) ? 64'h0000_0000_ffff_0000 :
+                          (rand[3:2] == 2) ? 64'h0000_ffff_0000_0000 :
+                          (rand[3:2] == 3) ? 64'hffff_0000_0000_0000 : 64'h0;
 
 always @ (posedge ui_mig_clk) 
 	if (ui_mig_rst)
@@ -391,7 +335,6 @@ always @ (posedge ui_mig_clk)
 			arb_reg <= ARB_WR;
 	end
 
-
 reg          stage_valid_0, stage_valid_1, stage_valid_2;
 reg  [159:0] stage_data_0;
 wire [511:0] wr_data_pre;
@@ -399,11 +342,11 @@ wire [511:0] wr_data_pre;
 assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
 assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
 assign rd_en_savefifo = app_rd_data_valid;
-assign wr_en_wrfifo   = stage_valid_0;
-assign wr_en_rdfifo   = in_valid;
-assign wr_en_savefifo = in_valid;
+assign wr_en_wrfifo   = (in_valid & in_op[0] == SET_REQ) || rd_en_upfifo;
+assign wr_en_rdfifo   = in_valid & in_op[0] == GET_REQ;
+assign wr_en_savefifo = in_valid & in_op[0] == GET_REQ;
 assign din_rdfifo     = {in_hash[29:0], 2'b11};
-assign din_wrfifo     = {wr_data_pre, stage_data_0[31:2], 2'b01};
+assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ? {rand_wrdata, rand_wrstrb, in_hash[29:0], 2'b01} : dout_upfifo[607:96];
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 
 // MIG assignment
@@ -436,17 +379,21 @@ wire key_lookup3 = slot3[95:0] == key_reg3;
 wire table_hit = key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3;
 wire update_en   = stage_valid_0 & ~table_hit;
 
-
 assign slot0 = rd_data_buf[127:0];
 assign slot1 = rd_data_buf[255:128];
 assign slot2 = rd_data_buf[383:256];
 assign slot3 = rd_data_buf[511:384];
 
-wire [31:0] rand;
 wire insert0 = table_hit ? key_lookup0 : (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
 wire insert1 = table_hit ? key_lookup1 : (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
 wire insert2 = table_hit ? key_lookup2 : (rand[1:0] == 2'b10) ? 1'b1 : 1'b0;
 wire insert3 = table_hit ? key_lookup3 : (rand[1:0] == 2'b11) ? 1'b1 : 1'b0;
+
+wire [64:0] update_strb = (key_lookup0) ? 64'h0000_0000_0000_ffff :
+                          (key_lookup1) ? 64'h0000_0000_ffff_0000 :
+                          (key_lookup2) ? 64'h0000_ffff_0000_0000 :
+                          (key_lookup3) ? 64'hffff_0000_0000_0000 : 64'h0;
+
 
 assign wr_data_pre = (insert0) ? {rd_data_buf[511:128], stage_data_0[159:32]} :
                      (insert1) ? {rd_data_buf[511:256], stage_data_0[159:32], rd_data_buf[127:0]} : 
@@ -482,6 +429,10 @@ always @ (posedge clk156)
 		end
 	end
 
+//      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
+assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
+assign wr_en_upfifo = stage_valid_0 & table_hit;
+assign rd_en_upfifo = ~empty_upfifo & ~in_valid;
 
 prbs u_prbs (
 	.do       (rand),

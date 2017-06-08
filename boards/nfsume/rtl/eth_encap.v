@@ -342,9 +342,10 @@ always @ (posedge clk156) begin
 				hit_cnt[4]  <= 1;
 			if (suspect_mode)
 				hit_cnt[5]  <= 1;
-			if (suspect_mode && suspect_parm_dns[15] == DNS_PARAM_RESPONSE &&
-				rx_cnt0 == 10'd6) begin
-				db_op0 <= 4'b0011;
+			//if (suspect_mode && suspect_parm_dns[15] == DNS_PARAM_RESPONSE &&
+			//	db_op0 <= 4'b0011;
+			if (suspect_mode && rx_cnt0 == 10'd4) begin
+				db_op0 <= 4'b0000;
 				hit_cnt[6] <= 1;
 			end
 		end
@@ -479,7 +480,11 @@ wire [7:0]  out_axis_tkeep;
 wire [6:0]  out_axis_dummy_tuser;
 
 // To network
+localparam CHECK_THROUGH = 1;
+localparam CHECK_DROP    = 0;
 
+
+wire check_pkt;
 axis_interconnect_0 u_interconnect_2_1 (
 	.ACLK                 (clk156),   
 	.ARESETN              (!eth_rst), 

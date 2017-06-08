@@ -524,9 +524,9 @@ begin
 	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'h11400040_4adc5200;
 	waitethclk(1);
-	h0_s_axis_tx_tdata  = 64'ha8c02b0a_a8c01fb1;
+	h0_s_axis_tx_tdata  = 64'ha8c0640a_a8c01fb1;
 	waitethclk(1);
-	h0_s_axis_tx_tdata  = 64'h44333412_39302a0a;
+	h0_s_axis_tx_tdata  = 64'h44333412_3930650a;
 	waitethclk(1);
 	h0_s_axis_tx_tdata  = 64'hccbbaa99_88776655;
 	waitethclk(1);
@@ -666,6 +666,7 @@ end
 endtask
 
 
+
 //*******************************************************************
 // Monitoring mitiKV behavior
 //*******************************************************************
@@ -732,6 +733,69 @@ always @ (posedge u_top.u_eth_top.clk156)
 		//$display("\t\tHash value    : %d", );
 		$write("%c[0m",27); 
 	end
+
+
+always @ (posedge u_top.u_db_top.u_db_cont.clk156)
+	if (u_top.u_db_top.u_db_cont.in_valid) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t in_valid is high for DRAM", sys_cnt);
+		$display("\t\tOperation : %s",  u_top.u_db_top.u_db_cont.in_op[0] == 1'b1 ? "WRITE" : "READ");
+		$display("\t\tkey           : %x",  
+			u_top.u_db_top.u_db_cont.in_key);
+		$display("\t\tkey (detail)  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			u_top.u_db_top.u_db_cont.in_key[95:88],
+			u_top.u_db_top.u_db_cont.in_key[87:80],
+			u_top.u_db_top.u_db_cont.in_key[79:72],
+			u_top.u_db_top.u_db_cont.in_key[71:64],
+			u_top.u_db_top.u_db_cont.in_key[63:56],
+			u_top.u_db_top.u_db_cont.in_key[55:48],
+			u_top.u_db_top.u_db_cont.in_key[47:40],
+			u_top.u_db_top.u_db_cont.in_key[39:32],
+			u_top.u_db_top.u_db_cont.in_key[31:16],
+			u_top.u_db_top.u_db_cont.in_key[15: 0]);
+		$display("\t\tvalue         : %x",  
+			u_top.u_db_top.u_db_cont.in_value);
+		$display("\t\thash          : %x",  
+			u_top.u_db_top.u_db_cont.in_hash);
+		$write("%c[0m",27); 
+	end
+
+always @ (posedge u_top.u_db_top.u_db_cont.clk156)
+	if (u_top.u_db_top.u_db_cont.out_valid) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t out_valid is high for DRAM", sys_cnt);
+		$write("%c[0m",27); 
+	end
+
+always @ (posedge u_top.u_db_top.u_db_cont.ui_mig_clk) begin
+	if (u_top.u_db_top.u_db_cont.out_valid) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t out_valid is high for DRAM", sys_cnt);
+		$write("%c[0m",27); 
+	end
+	if (u_top.u_db_top.u_db_cont.app_en & 
+			u_top.u_db_top.u_db_cont.app_rdy) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\tCMD issue: %s", sys_cnt, 	
+			u_top.u_db_top.u_db_cont.app_cmd == 3'b000 ? 
+				"WRITE" : "READ" );
+		$write("%c[0m",27); 
+	end
+	if (u_top.u_db_top.u_db_cont.app_rd_data_valid) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\tRead Data:%64x", sys_cnt, 
+			u_top.u_db_top.u_db_cont.app_rd_data);
+		$write("%c[0m",27); 
+	end
+	if (u_top.u_db_top.u_db_cont.app_wdf_wren & 
+			u_top.u_db_top.u_db_cont.app_wdf_rdy) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\tWrite Data:%64x", sys_cnt, 
+			u_top.u_db_top.u_db_cont.app_wdf_data);
+		$write("%c[0m",27); 
+	end
+end
+
 //*******************************************************************
 // Memory Models instantiations
 //*******************************************************************
@@ -768,15 +832,15 @@ endgenerate
  */ 
 
 initial begin
-	//$dumpfile("./test.vcd");
-	//$dumpvars(0, tb_sim);
+	$dumpfile("./test.vcd");
+	$dumpvars(0, tb_sim);
 	$display("Simulation begins.");
 	$display("================================================");
 
 	//wait (u_top.u_db_top.u_db_cont.init_calib_complete);
 	barriersync_eth;
 	waitethclk(10);
-	//waitethclk(300);
+	waitethclk(300);
 
 	h0_attack_to_mitikv;
 	waitethclk(1);
