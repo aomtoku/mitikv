@@ -117,7 +117,7 @@ onerror {resume}
 #View sim_tb_top signals in waveform#
 add wave sim:/tb_sim/*
 add wave sim:/tb_sim/u_top/u_db_top/u_db_cont/*
-#add wave sim:/tb_sim/u_top/u_eth_top/*
+add wave sim:/tb_sim/u_top/u_eth_top/*
 add wave sim:/tb_sim/u_top/u_eth_top/u_eth_encap/*
 #Change radix to Hexadecimal#
 radix hex

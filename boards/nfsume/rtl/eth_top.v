@@ -69,7 +69,7 @@ sfp_refclk_init sfp_refclk_init0 (
  *  Ethernet Clock Domain : Reset
  */
 reg [13:0] cold_counter = 0; 
-reg        eth_rst_reg;
+reg        eth_rst_reg = 0;
 `ifndef SIM_ETH_IP
 assign eth_rst = eth_rst_reg;
 always @(posedge clk156) 

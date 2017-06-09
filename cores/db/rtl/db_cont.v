@@ -92,83 +92,9 @@ module db_cont #(
 	output wire [VAL_SIZE-1:0]   out_value     
 );
 
-localparam SET_REQ = 1'b1,
-           GET_REQ = 1'b0;
-localparam IDLE_STATE    = 2'b00,
-           SUSPECT_STATE = 2'b01,
-           ARREST_STATE  = 2'b10,
-           EXPIRE_STATE  = 2'b11;
-/*
- * Free Running Counter
- *
- */
-wire div_clk;
-reg [23:0] div_cnt;
-always @ (posedge clk156)
-	if (rst)
-		div_cnt <= 0;
-	else
-		div_cnt <= div_cnt + 1;
-
-reg [15:0] sys_cnt = 0;
-always @ (posedge div_clk)
-	sys_cnt <= sys_cnt + 1;
-
-`ifdef SIMULATION
-assign div_clk = div_cnt[3];
-`else
-BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
-`endif  /* SIMULATION */
-
-/*
- * Flag field
- *    flag  [0] : RD / WR
- *    flag[3:1] : state
- *                3'b000 : IDLE
- *                3'b001 : SUSPECTION
- *                3'b010 : ARREST
- *                3'b011 : FILTERED
- */
-
-
-/*
- * Hash Table Access Logic
- */
-// HashTable 0x0000_0000--0x0000_ffff
-wire [HASH_SIZE-1:0] hash = in_hash; 
-wire [RAM_ADDR-1:0] hash_addr = hash[RAM_ADDR-1:0];
-
-localparam IDLE   = 0,
-           CHECK  = 1,
-           MISS   = 2,
-           UPDATE = 3;
-integer i;
-reg                valid_reg0, valid_reg1, valid_reg2, valid_reg3;
-reg [1:0]          state;
-reg [KEY_SIZE-1:0] fetched_key;
-reg [VAL_SIZE-1:0] fetched_val, get_val;
-reg                judge;
-/* Hash Table & Data Store */
-wire [3:0] fetched_flag = fetched_val[27:24];
-wire [1:0] fetched_state = fetched_val[26:25];
-
-/* DPRAM interface */
-wire [KEY_SIZE-1:0] dpram_out_key, dpram_in_key;
-wire [VAL_SIZE-1:0] dpram_out_val, dpram_in_val;
-wire wea = state == UPDATE;
-wire ena = 1'b1;
-
-`ifdef DRAM_SUPPORT
-/*
- * DRAM APP Interface 
- */
-localparam DATA_WIDTH            = 64;
-localparam RANK_WIDTH = clogb2(RANKS);
-localparam PAYLOAD_WIDTH         = (ECC_TEST == "OFF") ? DATA_WIDTH : DQ_WIDTH;
-localparam BURST_LENGTH          = STR_TO_INT(BURST_MODE);
-localparam APP_DATA_WIDTH        = 2 * nCK_PER_CLK * PAYLOAD_WIDTH;
-localparam APP_MASK_WIDTH        = APP_DATA_WIDTH / 8;
-
+// ------------------------------------------------------
+//   Functions
+// ------------------------------------------------------
 function integer clogb2 (input integer size);
 begin
 	size = size - 1;
@@ -189,6 +115,50 @@ begin
 end
 endfunction
 
+// ------------------------------------------------------
+//   Parameters
+// ------------------------------------------------------
+localparam SET_REQ = 1'b1,
+           GET_REQ = 1'b0;
+
+localparam DATA_WIDTH     = 64;
+localparam RANK_WIDTH     = clogb2(RANKS);
+localparam PAYLOAD_WIDTH  = (ECC_TEST == "OFF") ? DATA_WIDTH : DQ_WIDTH;
+localparam BURST_LENGTH   = STR_TO_INT(BURST_MODE);
+localparam APP_DATA_WIDTH = 2 * nCK_PER_CLK * PAYLOAD_WIDTH;
+localparam APP_MASK_WIDTH = APP_DATA_WIDTH / 8;
+
+localparam MIG_CMD_READ  = 3'b001;
+localparam MIG_CMD_WRITE = 3'b000;
+
+localparam ARB_RD        = 2'b01;
+localparam ARB_WR        = 2'b10;
+
+// ------------------------------------------------------
+//   Timecounter for value stored in hash-table 
+// ------------------------------------------------------
+wire div_clk;
+reg [23:0] div_cnt;
+
+always @ (posedge clk156)
+	if (rst)
+		div_cnt <= 0;
+	else
+		div_cnt <= div_cnt + 1;
+
+reg [15:0] sys_cnt = 0;
+always @ (posedge div_clk)
+	sys_cnt <= sys_cnt + 1;
+
+`ifndef SIMULATION_DEBUG
+BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
+`else
+assign div_clk = div_cnt[3];
+`endif  /* SIMULATION_DEBUG */
+
+// ------------------------------------------------------
+//   User Interface for MIG 
+// ------------------------------------------------------
 wire [(2*nCK_PER_CLK)-1:0]            app_ecc_multiple_err;
 wire [ADDR_WIDTH-1:0]                 app_addr;
 wire [2:0]                            app_cmd;
@@ -206,10 +176,10 @@ wire                                  app_ref_ack;
 wire                                  app_zq_ack;
 wire                                  app_wdf_wren;
 
-/*
- *  DRAM fifo (wr)
- *      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
- */
+// ------------------------------------------------------
+// DRAM fifo (wr)
+//     512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
+// ------------------------------------------------------
 wire [512+64+30+1+1-1:0] din_wrfifo, dout_wrfifo;
 wire                     wr_en_wrfifo, rd_en_wrfifo;
 wire                     empty_wrfifo, full_wrfifo;
@@ -226,16 +196,16 @@ asfifo_608_64 u_wrfifo (
 	.empty    ( empty_wrfifo ) 
 );
 
-/*
- *  DRAM fifo (update)
- *      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
- */
+// ------------------------------------------------------
+// DRAM fifo (update)
+//     512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
+// ------------------------------------------------------
 wire [512+64+30+1+1-1:0] din_upfifo, dout_upfifo;
 wire                     wr_en_upfifo, rd_en_upfifo;
 wire                     empty_upfifo, full_upfifo;
 
 asfifo_608_64 u_upfifo (
-	.rst      ( rst ),  
+	.rst      ( rst | ui_mig_rst ),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
 	.din      ( din_upfifo   ), 
@@ -246,11 +216,11 @@ asfifo_608_64 u_upfifo (
 	.empty    ( empty_upfifo ) 
 );
 
-/*
- *  DRAM fifo (rd)
- *      configuration: 32width x 64depth
- *      width bitmap : 30(addr) + 1(cmd) + 1(vadid)
- */
+// ------------------------------------------------------
+// DRAM fifo (rd)
+//     configuration: 32width x 64depth
+//     width bitmap : 30(addr) + 1(cmd) + 1(vadid)
+// ------------------------------------------------------
 wire [30+1+1-1:0] din_rdfifo, dout_rdfifo;
 wire              wr_en_rdfifo, rd_en_rdfifo;
 wire              empty_rdfifo, full_rdfifo;
@@ -259,7 +229,7 @@ asfifo_32_64 u_rd_fifo (
 	.rst      ( rst | ui_mig_rst),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
-	.din      ( din_fifo_in  ), 
+	.din      ( din_rdfifo  ), 
 	.wr_en    ( wr_en_rdfifo ),
 	.rd_en    ( rd_en_rdfifo ),
 	.dout     ( dout_rdfifo  ), 
@@ -267,11 +237,11 @@ asfifo_32_64 u_rd_fifo (
 	.empty    ( empty_rdfifo ) 
 );
 
-/*
- *  DRAM fifo (save)
- *      configuration: 160 bit width x 64 depth
- *      width bitmap : 32(value) + 96(key) + 30(addr) + 1(reserved) + 1(vadid)
- */
+// ------------------------------------------------------
+// DRAM fifo (save)
+//     configuration: 160 bit width x 64 depth
+//     width bitmap : 32(value) + 96(key) + 30(addr) + 1(rsrv) + 1(vadid)
+// ------------------------------------------------------
 wire [32+96+30+1+1-1:0] din_savefifo, dout_savefifo;
 wire wr_en_savefifo, rd_en_savefifo;
 wire empty_savefifo, full_savefifo;
@@ -293,21 +263,15 @@ asfifo_160_64 u_save_fifo (
  *  Arbiter 
  *     WR-FIFO or RD-FIFO
  */
-localparam MIG_CMD_READ  = 3'b001;
-localparam MIG_CMD_WRITE = 3'b000;
-localparam ARB_RD        = 2'b01;
-localparam ARB_WR        = 2'b10;
 
-//wire [2:0]   wr_fifo_cmd = (dout_wrfifo[1] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
-//wire [2:0]   rd_fifo_cmd = (dout_wrfifo[0] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
-wire [2:0]   wr_fifo_cmd = MIG_CMD_WRITE ;
-wire [2:0]   rd_fifo_cmd = MIG_CMD_READ  ;
+wire [2:0]   wr_fifo_cmd  = MIG_CMD_WRITE ;
+wire [2:0]   rd_fifo_cmd  = MIG_CMD_READ  ;
 wire [29:0]  wr_fifo_addr = dout_wrfifo[31:2];
 wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
-wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
-wire [511:0] wrfifo_data = dout_wrfifo[607:96];
-wire         fifo_valid  = ~empty_rdfifo | ~empty_wrfifo;
+wire [63:0]  wrfifo_strb  = dout_wrfifo[95:32];
+wire [511:0] wrfifo_data  = dout_wrfifo[607:96];
+wire         fifo_valid   = ~empty_rdfifo | ~empty_wrfifo;
 
 // ----------------------------------------------------
 //   Arbitor between RD-FIFO and WR-FIFO on issueing CMD
@@ -322,7 +286,7 @@ always @ (posedge ui_mig_clk)
 		if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_RD)
 			arb_reg <= ARB_WR;
 		else if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_WR)  
-			arb_reg <= ARB_WR;
+			arb_reg <= ARB_RD;
 	end
 
 always @ (*) begin
@@ -341,14 +305,15 @@ end
 //  Write Data using RANDOM(PRBS-based) as Replacement Policy
 // ---------------------------------------------------------------
 wire [31:0] rand;
-wire [511:0] rand_wrdata = (rand[3:2] == 0) ? {384'h0, in_key, in_value} :
-                           (rand[3:2] == 1) ? {256'h0, in_key, in_value, 128'h0} :
-                           (rand[3:2] == 2) ? {128'h0, in_key, in_value, 256'h0} :
-                           (rand[3:2] == 3) ? {in_key, in_value, 384'h0} : 512'h0;
+wire [511:0] rand_wrdata = 
+           (rand[3:2] == 0) ? {384'h0, in_key, in_value}         :
+           (rand[3:2] == 1) ? {256'h0, in_key, in_value, 128'h0} :
+           (rand[3:2] == 2) ? {128'h0, in_key, in_value, 256'h0} :
+           (rand[3:2] == 3) ? {in_key, in_value, 384'h0}         : 0;
 wire [63:0] rand_wrstrb = (rand[3:2] == 0) ? 64'h0000_0000_0000_ffff :
                           (rand[3:2] == 1) ? 64'h0000_0000_ffff_0000 :
                           (rand[3:2] == 2) ? 64'h0000_ffff_0000_0000 :
-                          (rand[3:2] == 3) ? 64'hffff_0000_0000_0000 : 64'h0;
+                          (rand[3:2] == 3) ? 64'hffff_0000_0000_0000 : 0;
 
 prbs u_prbs (
 	.do       (rand),
@@ -357,18 +322,12 @@ prbs u_prbs (
 	.rstn     (init_calib_complete) 
 );
 
-
-reg          stage_valid_0, stage_valid_1, stage_valid_2;
-reg  [159:0] stage_data_0;
-wire [511:0] wr_data_pre;
-
-
 // ----------------------------------------------------
 //   MIG User Interface assignment
 // ---------------------------------------------------
-assign app_addr = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr ;
-assign app_cmd  = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd ;
-assign app_en = fifo_valid;
+assign app_addr     = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr;
+assign app_cmd      = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd;
+assign app_en       = fifo_valid;
 assign app_wdf_data = wrfifo_data;
 assign app_wdf_wren = arb_switch == ARB_WR;
 assign app_wdf_end  = 1;
@@ -385,6 +344,9 @@ reg  [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3,
              key_reg4, key_reg5, key_reg6, key_reg7;
 wire [127:0] slot0, slot1, slot2, slot3;
 wire [127:0] slot4, slot5, slot6, slot7;
+wire [511:0] wr_data_pre;
+reg          stage_valid_0, stage_valid_1, stage_valid_2;
+reg  [159:0] stage_data_0;
 
 wire key_lookup0 = slot0[95:0] == key_reg0;
 wire key_lookup1 = slot1[95:0] == key_reg1;
@@ -433,6 +395,7 @@ always @ (posedge clk156)
 		key_reg5    <= 0;
 		key_reg6    <= 0;
 		key_reg7    <= 0;
+		stage_valid_0 <= 1'b0;
 	end else begin
 		if (init_calib_complete) begin
 			if (app_rd_data_valid) begin
@@ -470,7 +433,6 @@ assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ?
                    dout_upfifo[607:96];
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
-
 
 
 sume_ddr_mig u_sume_ddr_mig (
@@ -517,30 +479,6 @@ sume_ddr_mig u_sume_ddr_mig (
        .sys_clk_n                      (sys_clk_n),
        .sys_rst                        (!rst)
 );
-`else 
-`ifdef SIMULATION_DEBUG
-dpram #(
-	.ADDR    (10),
-	.DWIDTH  (128)
-) u_dpram (
-	.clka      (clk156),    
-	.ena       (ena),   
-	.wea       (wea),   
-	.addra     (hash_addr), 
-	.dina      ({dpram_in_val, dpram_in_key}),   
-	.douta     ({dpram_out_val, dpram_out_key})  
-);
-`else
-dpram_128_262k u_dpram (
-	.clka      (clk156),    
-	.ena       (ena),   
-	.wea       (wea),   
-	.addra     (hash_addr), 
-	.dina      ({dpram_in_val, dpram_in_key}),   
-	.douta     ({dpram_out_val, dpram_out_key})  
-);
-`endif /* SIMULATION_DEBUG */
-`endif /* DRAM_SUPPORT */
 
 `ifdef DEBUG_ILA
 ila_0 u_ila (

@@ -759,6 +759,24 @@ always @ (posedge u_top.u_db_top.u_db_cont.clk156)
 			u_top.u_db_top.u_db_cont.in_hash);
 		$write("%c[0m",27); 
 	end
+always @ (posedge u_top.u_db_top.u_db_cont.clk156)
+	if (u_top.u_db_top.u_db_cont.stage_valid_0) begin
+		$write("%c[1;34m",27); 
+		$display("Clk[%8d]\t Lookup : %s", sys_cnt,
+			u_top.u_db_top.u_db_cont.table_hit ? "HIT" : "MISS");
+		if (u_top.u_db_top.u_db_cont.table_hit) begin
+			if (u_top.u_db_top.u_db_cont.key_lookup0)
+				$display("\t\tEntry 0");
+			if (u_top.u_db_top.u_db_cont.key_lookup1)
+				$display("\t\tEntry 1");
+			if (u_top.u_db_top.u_db_cont.key_lookup2)
+				$display("\t\tEntry 2");
+			if (u_top.u_db_top.u_db_cont.key_lookup3)
+				$display("\t\tEntry 3");
+		end
+		$write("%c[0m",27); 
+		
+	end
 
 always @ (posedge u_top.u_db_top.u_db_cont.clk156)
 	if (u_top.u_db_top.u_db_cont.out_valid) begin
