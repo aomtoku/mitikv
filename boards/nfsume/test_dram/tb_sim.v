@@ -837,6 +837,19 @@ always @ (posedge u_top.u_db_top.u_db_cont.ui_mig_clk) begin
 	end
 end
 
+always @ (posedge u_top.u_db_top.u_db_cont.clk156)
+	if (u_top.u_eth_top.u_eth_encap.check_pkt_en) begin
+		if (u_top.u_eth_top.u_eth_encap.check_pkt) begin
+			$write("%c[1;34m",27); 
+			$display("Clk[%8d]\t Pkt CHECK : Discarded", sys_cnt);
+			$write("%c[0m",27); 
+		end else begin
+			$write("%c[1;34m",27); 
+			$display("Clk[%8d]\t Pkt CHECK : Pass through", sys_cnt);
+			$write("%c[0m",27); 
+
+		end
+	end
 //*******************************************************************
 // Memory Models instantiations
 //*******************************************************************

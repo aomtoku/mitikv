@@ -266,6 +266,8 @@ asfifo_160_64 u_save_fifo (
 
 wire [2:0]   wr_fifo_cmd  = MIG_CMD_WRITE ;
 wire [2:0]   rd_fifo_cmd  = MIG_CMD_READ  ;
+// Todo : address will be 6'b00000 as lower bits.
+//        to lookup 4 entries.
 wire [29:0]  wr_fifo_addr = dout_wrfifo[31:2];
 wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
@@ -359,10 +361,14 @@ wire update_en   = stage_valid_0 & ~table_hit;
 // 
 //wire value_cmp0  = slot;
 
-wire insert0 = table_hit ? key_lookup0 : (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
-wire insert1 = table_hit ? key_lookup1 : (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
-wire insert2 = table_hit ? key_lookup2 : (rand[1:0] == 2'b10) ? 1'b1 : 1'b0;
-wire insert3 = table_hit ? key_lookup3 : (rand[1:0] == 2'b11) ? 1'b1 : 1'b0;
+wire insert0 = (table_hit) ? key_lookup0 : 
+                             (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
+wire insert1 = (table_hit) ? key_lookup1 : 
+                             (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
+wire insert2 = (table_hit) ? key_lookup2 : 
+                             (rand[1:0] == 2'b10) ? 1'b1 : 1'b0;
+wire insert3 = (table_hit) ? key_lookup3 : 
+                             (rand[1:0] == 2'b11) ? 1'b1 : 1'b0;
 
 wire [64:0] update_strb = (key_lookup0) ? 64'h0000_0000_0000_ffff :
                           (key_lookup1) ? 64'h0000_0000_ffff_0000 :
@@ -399,11 +405,17 @@ always @ (posedge clk156)
 	end else begin
 		if (init_calib_complete) begin
 			if (app_rd_data_valid) begin
-				rd_data_buf <=
-                     {app_rd_data[63:0],    app_rd_data[127:64], 
-                      app_rd_data[191:128], app_rd_data[255:192], 
-                      app_rd_data[319:256], app_rd_data[383:320], 
-                      app_rd_data[447:384], app_rd_data[511:448]};
+				// Todo & Consideration 
+				//   - 8B alignment ? (need to make confimation.)
+				//   - in_key lower 16bits as 0 at nfsume/rtl/eth_encap. 
+				//          8B alignment is needed.
+				//   - in_key lower 16bits as src_udp_port at nfsume/rtl/eth_encap. 
+				//          8B alignment is not needed.
+				rd_data_buf <= app_rd_data;
+                     //{app_rd_data[63:0],    app_rd_data[127:64], 
+                     // app_rd_data[191:128], app_rd_data[255:192], 
+                     // app_rd_data[319:256], app_rd_data[383:320], 
+                     // app_rd_data[447:384], app_rd_data[511:448]};
 				key_reg0    <= dout_savefifo[127:32];
 				key_reg1    <= dout_savefifo[127:32];
 				key_reg2    <= dout_savefifo[127:32];
