@@ -111,46 +111,17 @@ wire [63:0] p0_axis_tdata;
 reg  [15:0] p0_lookup_traffic_en;
 assign {p0_axis_tvalid, p0_axis_tdata, p0_axis_tkeep, p0_axis_tlast} = pipe_stg0_b;
 
-//reg  [1+1+8+64-1:0] pipe_stg1_0, pipe_stg1_1, pipe_stg1_2, pipe_stg1_3;
-//reg  [1+1+8+64-1:0] pipe_stg1_4, pipe_stg1_5, pipe_stg1_6, pipe_stg1_7;
-//wire [1+1+8+64-1:0] pipe_in_stage1 = {s_axis_rx1_tvalid, s_axis_rx1_tdata, 
-//						s_axis_rx1_tkeep, s_axis_rx1_tlast}; 
-//wire        p1_axis_tvalid, p1_axis_tlast;
-//wire [ 7:0] p1_axis_tkeep;
-//wire [63:0] p1_axis_tdata;
-//assign {p1_axis_tvalid, p1_axis_tdata, p1_axis_tkeep, p1_axis_tlast} = pipe_stg1_7;
-
-//reg filter_mode_next;
-//reg s_axis_rx1_tlast_reg;
-//reg filter_mode;
-//always @ (*) begin
-//	filter_mode = 1'b0;
-//
-//	if (s_axis_rx1_tlast_reg)
-//		filter_mode = 1'b0;
-//
-//	if (rx1_ftype  == ETH_FTYPE_IP          && 
-//        rx1_ip_proto  == IP_PROTO_ICMP      &&
-//        rx1_icmp_type == ICMP_DEST_UNREACH  &&
-//        (rx1_icmp_code == ICMP_PORT_UNREACH ||
-//		 rx1_icmp_code == ICMP_ADMIN_PROHIB)) begin
-//		filter_mode = 1'b1;
-//	end
-//end
-
- wire filter_mode  = rx1_ftype     == ETH_FTYPE_IP      && 
-                     rx1_ip_proto  == IP_PROTO_ICMP     &&
-                     rx1_icmp_type == ICMP_DEST_UNREACH &&
-                     (rx1_icmp_code == ICMP_PORT_UNREACH ||
- 					 rx1_icmp_code == ICMP_ADMIN_PROHIB) && 
-					 s_axis_rx1_tvalid;
-wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
-                    rx0_ip_proto  == IP_PROTO_UDP      &&
-                    rx0_src_uport == DNS_SERV_PORT;
-wire lookup_traffic = rx0_ftype     == ETH_FTYPE_IP      &&
-                    rx0_ip_proto  == IP_PROTO_UDP;
-//reg  filtered;
-//wire filter_block = filtered || (out_valid && out_flag[2:1] == 2'b10);
+wire filter_mode    = rx1_ftype      == ETH_FTYPE_IP      && 
+                      rx1_ip_proto   == IP_PROTO_ICMP     &&
+                      rx1_icmp_type  == ICMP_DEST_UNREACH &&
+                      (rx1_icmp_code == ICMP_PORT_UNREACH ||
+                      rx1_icmp_code  == ICMP_ADMIN_PROHIB) && 
+                      s_axis_rx1_tvalid;
+wire suspect_mode   = rx0_ftype      == ETH_FTYPE_IP      &&
+                      rx0_ip_proto   == IP_PROTO_UDP      &&
+                      rx0_src_uport  == DNS_SERV_PORT;
+wire lookup_traffic = rx0_ftype      == ETH_FTYPE_IP      &&
+                      rx0_ip_proto   == IP_PROTO_UDP;
 
 reg valid_udp_traffic;
 wire udp_traffic_en = valid_udp_traffic | 
@@ -207,7 +178,6 @@ always @ (posedge clk156) begin
 		suspect_auth_dns <= 0;
 		db_op0           <= 0;
 		db_op1           <= 0;
-		//filtered         <= 0;
 		pipe_stg0_0      <= 0;
 		pipe_stg0_1      <= 0;
 		pipe_stg0_2      <= 0;
@@ -221,55 +191,21 @@ always @ (posedge clk156) begin
 		pipe_stg0_a      <= 0;
 		pipe_stg0_b      <= 0;
 		p0_lookup_traffic_en <= 0;
-		//pipe_stg1_0      <= 0;
-		//pipe_stg1_1      <= 0;
-		//pipe_stg1_2      <= 0;
-		//pipe_stg1_3      <= 0;
-		//pipe_stg1_4      <= 0;
-		//pipe_stg1_5      <= 0;
-		//pipe_stg1_6      <= 0;
-		//pipe_stg1_7      <= 0;
 	end else begin
 		/* Pipelining  */
 		p0_lookup_traffic_en <= {p0_lookup_traffic_en[15:0], lookup_traffic};
 		pipe_stg0_0 <= pipe_in_stage0;
-		//pipe_stg1_0 <= pipe_in_stage1;
-		//pipe_stg1_1 <= pipe_stg1_0;
-		//pipe_stg1_2 <= pipe_stg1_1;
-		//pipe_stg1_3 <= pipe_stg1_2;
-		//pipe_stg1_4 <= pipe_stg1_3;
-		//pipe_stg1_5 <= pipe_stg1_4;
-		//pipe_stg1_6 <= pipe_stg1_5;
-		//pipe_stg1_7 <= pipe_stg1_6;
-		//if (!filter_block) begin
-			pipe_stg0_1 <= pipe_stg0_0;
-			pipe_stg0_2 <= pipe_stg0_1;
-			pipe_stg0_3 <= pipe_stg0_2;
-			pipe_stg0_4 <= pipe_stg0_3;
-			pipe_stg0_5 <= pipe_stg0_4;
-			pipe_stg0_6 <= pipe_stg0_5;
-			pipe_stg0_7 <= pipe_stg0_6;
-			pipe_stg0_8 <= pipe_stg0_7;
-			pipe_stg0_9 <= pipe_stg0_8;
-			pipe_stg0_a <= pipe_stg0_9;
-			pipe_stg0_b <= pipe_stg0_a;
-		//end else begin // Zero is inserted in regs.
-		//	pipe_stg0_1 <= 0;
-		//	pipe_stg0_2 <= 0;
-		//	pipe_stg0_3 <= 0;
-		//	pipe_stg0_4 <= 0;
-		//	pipe_stg0_5 <= 0;
-		//	pipe_stg0_6 <= 0;
-		//	pipe_stg0_7 <= 0;
-		//	pipe_stg0_8 <= 0;
-		//	pipe_stg0_9 <= 0;
-		//	pipe_stg0_a <= 0;
-		//	pipe_stg0_b <= 0;
-		//end
-
-		/* DB reply */
-		//if (out_valid && out_flag[2:1] == 2'b10)
-		//	filtered <= 1;
+		pipe_stg0_1 <= pipe_stg0_0;
+		pipe_stg0_2 <= pipe_stg0_1;
+		pipe_stg0_3 <= pipe_stg0_2;
+		pipe_stg0_4 <= pipe_stg0_3;
+		pipe_stg0_5 <= pipe_stg0_4;
+		pipe_stg0_6 <= pipe_stg0_5;
+		pipe_stg0_7 <= pipe_stg0_6;
+		pipe_stg0_8 <= pipe_stg0_7;
+		pipe_stg0_9 <= pipe_stg0_8;
+		pipe_stg0_a <= pipe_stg0_9;
+		pipe_stg0_b <= pipe_stg0_a;
 
 		/* Packet Parser */
 		if (s_axis_rx0_tvalid) begin
@@ -293,7 +229,6 @@ always @ (posedge clk156) begin
 					suspect_acnt_dns <= 0; 
 					suspect_auth_dns <= 0;
 					db_op0           <= 0;
-					//filtered         <= 0;
 				end
 				1: rx0_ftype <= {s_axis_rx0_tdata[39:32], s_axis_rx0_tdata[47:40]};
 				2: rx0_ip_proto <= s_axis_rx0_tdata[63:56];
@@ -342,8 +277,6 @@ always @ (posedge clk156) begin
 				hit_cnt[4]  <= 1;
 			if (suspect_mode)
 				hit_cnt[5]  <= 1;
-			//if (suspect_mode && suspect_parm_dns[15] == DNS_PARAM_RESPONSE &&
-			//	db_op0 <= 4'b0011;
 			if (suspect_mode && rx_cnt0 == 10'd4) begin
 				db_op0 <= 4'b0000;
 				hit_cnt[6] <= 1;
@@ -438,7 +371,6 @@ always @ (posedge clk156) begin
 				default : ;
 			endcase
 			if (filter_mode && filter_src_udp == DNS_SERV_PORT &&
-				//filter_parm_dns[0] == DNS_PARAM_RESPONSE &&
 				rx_cnt1 == 10'd10) begin
 				db_op1 <= 4'b0101;
 				hit_cnt[7] <= 1;
@@ -456,13 +388,12 @@ assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) ||
                      filter_src_udp == DNS_SERV_PORT);
 
 assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
-                                  rx0_dst_uport , 16'd0}  :
+                                  rx0_dst_uport , rx0_src_uport}  :
                 (filter_mode)  ? {filter_src_ip, filter_dst_ip, 
-                                  filter_dst_udp, 16'd0} : 0;
+                                  filter_dst_udp, filter_src_udp} : 0;
 
 assign debug = hit_cnt;
 
-`ifndef SIMULATION
 
 wire        save_axis_tvalid;
 wire [63:0] save_axis_tdata;
@@ -480,15 +411,17 @@ wire [7:0]  out_axis_tkeep;
 wire [6:0]  out_axis_dummy_tuser;
 
 // To network
-localparam CHECK_THROUGH = 1;
-localparam CHECK_DROP    = 0;
+localparam CHECK_THROUGH = 0;
+localparam CHECK_DROP    = 1;
 
 
 wire check_pkt_en = out_valid ;
 wire check_pkt    = (out_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
-reg load_pkt;
-reg filter_pkt;
+
+reg load_pkt, load_pkt_next;
+reg filter_pkt, filter_pkt_next;
 reg last_reg, valid_reg;
+
 always @ (posedge clk156)
 	if (eth_rst) begin
 		last_reg  <= 0;
@@ -497,23 +430,34 @@ always @ (posedge clk156)
 		last_reg  <= save_axis_tlast;
 		valid_reg <= save_axis_tvalid;
 	end
+
 always @ (*) begin
-	load_pkt = 0;
-	filter_pkt = 0;
+	filter_pkt_next = filter_pkt;
+	load_pkt_next = load_pkt;
 
 	if (check_pkt_en)
-		load_pkt = 1;
+		load_pkt_next = 1;
 	if (last_reg & valid_reg)
-		load_pkt = 0;
+		load_pkt_next = 0;
 
 	if (check_pkt_en && check_pkt == CHECK_THROUGH)
-		filter_pkt = 1;
+		filter_pkt_next = 1;
 	if (last_reg & valid_reg)
-		filter_pkt = 0;
+		filter_pkt_next = 0;
 end
 
-wire sw_pkt_ready = save_axis_tready & load_pkt;
+always @ (posedge clk156) 
+	if (eth_rst) begin
+		load_pkt <= 0;
+		filter_pkt <= 0;
+	end else begin
+		load_pkt <= load_pkt_next;
+		filter_pkt <= filter_pkt_next;
+	end
 
+wire sw_pkt_ready = save_axis_tready & load_pkt_next;
+wire sw_pkt_ready_checked = save_axis_tready & filter_pkt_next;
+wire s0_ready;
 
 axis_interconnect_0 u_interconnect_2_1 (
 	.ACLK                 (clk156),   
@@ -523,20 +467,20 @@ axis_interconnect_0 u_interconnect_2_1 (
 	.S00_AXIS_ACLK        (clk156),  
 	.S00_AXIS_ARESETN     (!eth_rst), 
 	.S00_AXIS_TVALID      (p0_axis_tvalid & !udp_traffic_en), // todo   
-	.S00_AXIS_TREADY      (),   
+	.S00_AXIS_TREADY      (s0_ready),   
 	.S00_AXIS_TDATA       (p0_axis_tdata),   
 	.S00_AXIS_TKEEP       (p0_axis_tkeep),   
-	.S00_AXIS_TLAST       (p0_axis_tlast),   
+	.S00_AXIS_TLAST       (p0_axis_tlast & !udp_traffic_en),   
 	.S00_AXIS_TUSER       (8'd0),  // 8bit 
 
 	// Traffic UDP with lookup into DRAM HashTable
 	.S01_AXIS_ACLK        (clk156),  
 	.S01_AXIS_ARESETN     (!eth_rst),
-	.S01_AXIS_TVALID      (save_axis_tvalid & filter_pkt),   
+	.S01_AXIS_TVALID      (save_axis_tvalid & sw_pkt_ready_checked),   
 	.S01_AXIS_TREADY      (save_axis_tready),   
 	.S01_AXIS_TDATA       (save_axis_tdata),   
 	.S01_AXIS_TKEEP       (save_axis_tkeep),   
-	.S01_AXIS_TLAST       (save_axis_tlast & filter_pkt),   
+	.S01_AXIS_TLAST       (save_axis_tlast & sw_pkt_ready_checked),   
 	.S01_AXIS_TUSER       (8'd0),   
 
 	.M00_AXIS_ACLK        (clk156),   
@@ -547,137 +491,80 @@ axis_interconnect_0 u_interconnect_2_1 (
 	.M00_AXIS_TKEEP       (out_axis_tkeep),   
 	.M00_AXIS_TLAST       (out_axis_tlast),   
 	.M00_AXIS_TUSER       ({out_axis_dummy_tuser, out_axis_tuser}),   
-	.S00_ARB_REQ_SUPPRESS (),  // input wire
-	.S01_ARB_REQ_SUPPRESS ()  // input wire 
+	.S00_ARB_REQ_SUPPRESS (1'b0),  // input wire
+	.S01_ARB_REQ_SUPPRESS (1'b0)  // input wire 
 );
 
 
 // Nomarl traffic : to network port 1 from switch_interconnect
 axis_data_fifo_0 u_axis_data_fifo0 (
-  .s_axis_aresetn      (!eth_rst),  
-  .s_axis_aclk         (clk156),  
-
-  .s_axis_tvalid       (out_axis_tvalid),
-  .s_axis_tready       (out_axis_tready),          
-  .s_axis_tdata        (out_axis_tdata), 
-  .s_axis_tkeep        (out_axis_tkeep), 
-  .s_axis_tlast        (out_axis_tlast), 
-  .s_axis_tuser        (out_axis_tuser),          
-
-  .m_axis_tvalid       (m_axis_tx1_tvalid),
-  .m_axis_tready       (m_axis_tx1_tready),
-  .m_axis_tdata        (m_axis_tx1_tdata), 
-  .m_axis_tkeep        (m_axis_tx1_tkeep), 
-  .m_axis_tlast        (m_axis_tx1_tlast), 
-  .m_axis_tuser        (m_axis_tx1_tuser), 
-  .axis_data_count     (), 
-  .axis_wr_data_count  (), 
-  .axis_rd_data_count  ()  
+	.s_axis_aresetn      (!eth_rst),  
+	.s_axis_aclk         (clk156),  
+	
+	.s_axis_tvalid       (out_axis_tvalid),
+	.s_axis_tready       (out_axis_tready),          
+	.s_axis_tdata        (out_axis_tdata), 
+	.s_axis_tkeep        (out_axis_tkeep), 
+	.s_axis_tlast        (out_axis_tlast), 
+	.s_axis_tuser        (out_axis_tuser),          
+	
+	.m_axis_tvalid       (m_axis_tx1_tvalid),
+	.m_axis_tready       (m_axis_tx1_tready),
+	.m_axis_tdata        (m_axis_tx1_tdata), 
+	.m_axis_tkeep        (m_axis_tx1_tkeep), 
+	.m_axis_tlast        (m_axis_tx1_tlast), 
+	.m_axis_tuser        (m_axis_tx1_tuser), 
+	.axis_data_count     (), 
+	.axis_wr_data_count  (), 
+	.axis_rd_data_count  ()  
 );
 
 // Lookuped traffic : to switch from network port0
 axis_data_fifo_0 u_axis_data_fifo1 (
-  .s_axis_aresetn      (!eth_rst),  
-  .s_axis_aclk         (clk156),  
-
-  .s_axis_tvalid       (p0_axis_tvalid & !udp_traffic_en),
-  .s_axis_tready       (),          
-  .s_axis_tdata        (p0_axis_tdata), 
-  .s_axis_tkeep        (p0_axis_tkeep), 
-  .s_axis_tlast        (p0_axis_tlast), 
-  .s_axis_tuser        (1'b0),          
-
-  .m_axis_tvalid       (save_axis_tvalid),
-  .m_axis_tready       (sw_pkt_ready),
-  .m_axis_tdata        (save_axis_tdata), 
-  .m_axis_tkeep        (save_axis_tkeep), 
-  .m_axis_tlast        (save_axis_tlast), 
-  .m_axis_tuser        (save_axis_tuser), 
-
-  .axis_data_count     (), 
-  .axis_wr_data_count  (), 
-  .axis_rd_data_count  ()  
+	.s_axis_aresetn      (!eth_rst),  
+	.s_axis_aclk         (clk156),  
+	
+	.s_axis_tvalid       (p0_axis_tvalid & udp_traffic_en),
+	.s_axis_tready       (),          
+	.s_axis_tdata        (p0_axis_tdata), 
+	.s_axis_tkeep        (p0_axis_tkeep), 
+	.s_axis_tlast        (p0_axis_tlast & udp_traffic_en), 
+	.s_axis_tuser        (1'b0),          
+	
+	.m_axis_tvalid       (save_axis_tvalid),
+	.m_axis_tready       (sw_pkt_ready),
+	.m_axis_tdata        (save_axis_tdata), 
+	.m_axis_tkeep        (save_axis_tkeep), 
+	.m_axis_tlast        (save_axis_tlast), 
+	.m_axis_tuser        (save_axis_tuser), 
+	
+	.axis_data_count     (), 
+	.axis_wr_data_count  (), 
+	.axis_rd_data_count  ()  
 );
 
 axis_data_fifo_0 u_axis_data_fifo2 (
-  .s_axis_aresetn      (!eth_rst),   
-  .s_axis_aclk         (clk156), 
-
-  .s_axis_tvalid       (s_axis_rx1_tvalid),
-  .s_axis_tready       (),              
-  .s_axis_tdata        (s_axis_rx1_tdata), 
-  .s_axis_tkeep        (s_axis_rx1_tkeep), 
-  .s_axis_tlast        (s_axis_rx1_tlast), 
-  .s_axis_tuser        (1'b0),          
-
-  .m_axis_tvalid       (m_axis_tx0_tvalid),
-  .m_axis_tready       (m_axis_tx0_tready),
-  .m_axis_tdata        (m_axis_tx0_tdata), 
-  .m_axis_tkeep        (m_axis_tx0_tkeep), 
-  .m_axis_tlast        (m_axis_tx0_tlast), 
-  .m_axis_tuser        (m_axis_tx0_tuser), 
-  .axis_data_count     (),                 
-  .axis_wr_data_count  (),                 
-  .axis_rd_data_count  ()                  
+	.s_axis_aresetn      (!eth_rst),   
+	.s_axis_aclk         (clk156), 
+	
+	.s_axis_tvalid       (s_axis_rx1_tvalid),
+	.s_axis_tready       (),              
+	.s_axis_tdata        (s_axis_rx1_tdata), 
+	.s_axis_tkeep        (s_axis_rx1_tkeep), 
+	.s_axis_tlast        (s_axis_rx1_tlast), 
+	.s_axis_tuser        (1'b0),          
+	
+	.m_axis_tvalid       (m_axis_tx0_tvalid),
+	.m_axis_tready       (m_axis_tx0_tready),
+	.m_axis_tdata        (m_axis_tx0_tdata), 
+	.m_axis_tkeep        (m_axis_tx0_tkeep), 
+	.m_axis_tlast        (m_axis_tx0_tlast), 
+	.m_axis_tuser        (m_axis_tx0_tuser), 
+	
+	.axis_data_count     (),                 
+	.axis_wr_data_count  (),                 
+	.axis_rd_data_count  ()                  
 );
-`else
-
-axis_fifo_64 #(
-    .ADDR_WIDTH  (12),
-    .DATA_WIDTH  (64),
-) u_axis_data_fifo0 (
-    .clk              (clk156),
-    .rst              (eth_rst),
-    
-    /*
-     * AXI input
-     */
-    .input_axis_tdata (s_axis_rx1_tdata),
-    .input_axis_tkeep (s_axis_rx1_tkeep),
-    .input_axis_tvalid(s_axis_rx1_tvalid),
-    .input_axis_tready(),
-    .input_axis_tlast (s_axis_rx1_tlast),
-    .input_axis_tuser (1'b0),
-    
-    /*
-     * AXI output
-     */
-    .output_axis_tdata (m_axis_tx0_tdata),
-    .output_axis_tkeep (m_axis_tx0_tkeep),
-    .output_axis_tvalid(m_axis_tx0_tvalid),
-    .output_axis_tready(m_axis_tx0_tready),
-    .output_axis_tlast (m_axis_tx0_tlast),
-    .output_axis_tuser (m_axis_tx0_tuser)
-);
-
-axis_fifo_64 #(
-    .ADDR_WIDTH  (12),
-    .DATA_WIDTH  (64),
-) u_axis_data_fifo1 (
-    .clk              (clk156),
-    .rst              (eth_rst),
-    
-    /*
-     * AXI input
-     */
-    .input_axis_tdata (p0_axis_tdata),
-    .input_axis_tkeep (p0_axis_tkeep),
-    .input_axis_tvalid(p0_axis_tvalid),
-    .input_axis_tready(),
-    .input_axis_tlast (p0_axis_tlast),
-    .input_axis_tuser (1'b0),
-    
-    /*
-     * AXI output
-     */
-    .output_axis_tdata (m_axis_tx1_tdata),
-    .output_axis_tkeep (m_axis_tx1_tkeep),
-    .output_axis_tvalid(m_axis_tx1_tvalid),
-    .output_axis_tready(m_axis_tx1_tready),
-    .output_axis_tlast (m_axis_tx1_tlast),
-    .output_axis_tuser (m_axis_tx1_tuser)
-);
-`endif /* SIMULATION */
 
 /*
  * DEBUG
