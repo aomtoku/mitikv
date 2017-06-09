@@ -100,6 +100,8 @@ XDC_SRC := ../constraints/sume.xdc
 
 all: questa
 
+gui: questa-gui
+
 xsim:
 	test -e $(outdir) || mkdir $(outdir)
 	vivado -mode batch -source sim.tcl -log $(outdir)/createprj_log.txt -nojournal -tclargs "$(RTL_SRC)" "$(IP_SRC)"
@@ -120,4 +122,6 @@ wave:
 clean:
 	rm -f wave.vcd
 	rm -rf obj_dir
+	rm -f wlft*
+	rm -f vsim.wlf
 

@@ -298,8 +298,10 @@ localparam MIG_CMD_WRITE = 3'b000;
 localparam ARB_RD        = 2'b01;
 localparam ARB_WR        = 2'b10;
 
-wire [2:0]   wr_fifo_cmd = (dout_wrfifo[1] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
-wire [2:0]   rd_fifo_cmd = (dout_wrfifo[0] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
+//wire [2:0]   wr_fifo_cmd = (dout_wrfifo[1] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
+//wire [2:0]   rd_fifo_cmd = (dout_wrfifo[0] == 1'b1) ? MIG_CMD_READ : MIG_CMD_WRITE ;
+wire [2:0]   wr_fifo_cmd = MIG_CMD_WRITE ;
+wire [2:0]   rd_fifo_cmd = MIG_CMD_READ  ;
 wire [29:0]  wr_fifo_addr = dout_wrfifo[31:2];
 wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
 
@@ -307,11 +309,22 @@ wire [63:0]  wrfifo_strb = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data = dout_wrfifo[607:96];
 wire         fifo_valid  = ~empty_rdfifo | ~empty_wrfifo;
 
+// ----------------------------------------------------
+//   Arbitor between RD-FIFO and WR-FIFO on issueing CMD
+// ----------------------------------------------------
 reg  [1:0] arb_reg;
 reg  [1:0] arb_switch;
-//wire [1:0] arb_switch = (dout_rdfifo[0] & dout_wrfifo[0]) ? arb_reg :
-//                        (app_wdf_rdy && dout_wrfifo[0]) ? ARB_WR :
-//                                       (dout_rdfifo[0]) ? ARB_RD : 2'b00;
+
+always @ (posedge ui_mig_clk) 
+	if (ui_mig_rst)
+		arb_reg <= ARB_RD;
+	else begin
+		if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_RD)
+			arb_reg <= ARB_WR;
+		else if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_WR)  
+			arb_reg <= ARB_WR;
+	end
+
 always @ (*) begin
 	arb_switch = 0;
 
@@ -324,9 +337,9 @@ always @ (*) begin
 
 end
 
-/*
- *  Write Data using RANDOM(PRBS-based) as Placement
- */ 
+// ---------------------------------------------------------------
+//  Write Data using RANDOM(PRBS-based) as Replacement Policy
+// ---------------------------------------------------------------
 wire [31:0] rand;
 wire [511:0] rand_wrdata = (rand[3:2] == 0) ? {384'h0, in_key, in_value} :
                            (rand[3:2] == 1) ? {256'h0, in_key, in_value, 128'h0} :
@@ -337,31 +350,22 @@ wire [63:0] rand_wrstrb = (rand[3:2] == 0) ? 64'h0000_0000_0000_ffff :
                           (rand[3:2] == 2) ? 64'h0000_ffff_0000_0000 :
                           (rand[3:2] == 3) ? 64'hffff_0000_0000_0000 : 64'h0;
 
-always @ (posedge ui_mig_clk) 
-	if (ui_mig_rst)
-		arb_reg <= ARB_RD;
-	else begin
-		if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_RD)
-			arb_reg <= ARB_WR;
-		else if (~empty_rdfifo & ~empty_wrfifo && arb_reg == ARB_WR)  
-			arb_reg <= ARB_WR;
-	end
+prbs u_prbs (
+	.do       (rand),
+	.clk      (clk156),
+	.advance  (1'b1),
+	.rstn     (init_calib_complete) 
+);
+
 
 reg          stage_valid_0, stage_valid_1, stage_valid_2;
 reg  [159:0] stage_data_0;
 wire [511:0] wr_data_pre;
-// FIFO assignment
-assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
-assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
-assign rd_en_savefifo = app_rd_data_valid;
-assign wr_en_wrfifo   = (in_valid & in_op[0] == SET_REQ) || rd_en_upfifo;
-assign wr_en_rdfifo   = in_valid & in_op[0] == GET_REQ;
-assign wr_en_savefifo = in_valid & in_op[0] == GET_REQ;
-assign din_rdfifo     = {in_hash[29:0], 2'b11};
-assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ? {rand_wrdata, rand_wrstrb, in_hash[29:0], 2'b01} : dout_upfifo[607:96];
-assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 
-// MIG assignment
+
+// ----------------------------------------------------
+//   MIG User Interface assignment
+// ---------------------------------------------------
 assign app_addr = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr ;
 assign app_cmd  = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd ;
 assign app_en = fifo_valid;
@@ -372,10 +376,13 @@ assign app_wdf_mask = 0; // TODO
 
 // To support 1024bit data width of MIG,
 // you need to setup 4-7 regiseters.
-reg [511:0] rd_data_buf;
-reg [95:0] key_reg0, key_reg1, key_reg2, key_reg3,
-           key_reg4, key_reg5, key_reg6, key_reg7;
 
+// ----------------------------------------------------
+//   Lookup Logic
+// ---------------------------------------------------
+reg  [511:0] rd_data_buf;
+reg  [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3,
+             key_reg4, key_reg5, key_reg6, key_reg7;
 wire [127:0] slot0, slot1, slot2, slot3;
 wire [127:0] slot4, slot5, slot6, slot7;
 
@@ -384,17 +391,11 @@ wire key_lookup1 = slot1[95:0] == key_reg1;
 wire key_lookup2 = slot2[95:0] == key_reg2;
 wire key_lookup3 = slot3[95:0] == key_reg3;
 
+wire table_hit = stage_valid_0 & (key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3);
+wire update_en   = stage_valid_0 & ~table_hit;
 // Todo : value comparison logic
 // 
 //wire value_cmp0  = slot;
-
-wire table_hit = stage_valid_0 & (key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3);
-wire update_en   = stage_valid_0 & ~table_hit;
-
-assign slot0 = rd_data_buf[127:0];
-assign slot1 = rd_data_buf[255:128];
-assign slot2 = rd_data_buf[383:256];
-assign slot3 = rd_data_buf[511:384];
 
 wire insert0 = table_hit ? key_lookup0 : (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
 wire insert1 = table_hit ? key_lookup1 : (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
@@ -407,10 +408,19 @@ wire [64:0] update_strb = (key_lookup0) ? 64'h0000_0000_0000_ffff :
                           (key_lookup3) ? 64'hffff_0000_0000_0000 : 64'h0;
 
 
-assign wr_data_pre = (insert0) ? {rd_data_buf[511:128], stage_data_0[159:32]} :
-                     (insert1) ? {rd_data_buf[511:256], stage_data_0[159:32], rd_data_buf[127:0]} : 
-                     (insert2) ? {rd_data_buf[511:384], stage_data_0[159:32], rd_data_buf[255:0]} : 
-                     (insert3) ? {stage_data_0[159:32], rd_data_buf[383:0]} : 512'd0;
+assign wr_data_pre = 
+             (insert0) ? {rd_data_buf[511:128], stage_data_0[159:32]} :
+             (insert1) ? {rd_data_buf[511:256], stage_data_0[159:32], 
+                          rd_data_buf[127:0]} : 
+             (insert2) ? {rd_data_buf[511:384], stage_data_0[159:32], 
+                          rd_data_buf[255:0]} : 
+             (insert3) ? {stage_data_0[159:32], rd_data_buf[383:0]} : 
+                          512'd0;
+
+assign slot0 = rd_data_buf[127:0];
+assign slot1 = rd_data_buf[255:128];
+assign slot2 = rd_data_buf[383:256];
+assign slot3 = rd_data_buf[511:384];
 
 always @ (posedge clk156)
 	if (rst) begin
@@ -441,17 +451,27 @@ always @ (posedge clk156)
 		end
 	end
 
-//      512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
-assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
-assign wr_en_upfifo = stage_valid_0 & table_hit;
+// ----------------------------------------------------
+//   FIFO assignment
+// ----------------------------------------------------
+assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
+assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
+assign rd_en_savefifo = app_rd_data_valid;
 assign rd_en_upfifo = ~empty_upfifo & ~in_valid;
 
-prbs u_prbs (
-	.do       (rand),
-	.clk      (clk156),
-	.advance  (1'b1),
-	.rstn     (init_calib_complete) 
-);
+assign wr_en_wrfifo   = (in_valid & in_op[0] == SET_REQ) || rd_en_upfifo;
+assign wr_en_rdfifo   = in_valid & in_op[0] == GET_REQ;
+assign wr_en_savefifo = in_valid & in_op[0] == GET_REQ;
+assign wr_en_upfifo = stage_valid_0 & table_hit;
+
+assign din_rdfifo     = {in_hash[29:0], 2'b11};
+assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ?  
+                   {rand_wrdata, rand_wrstrb, in_hash[29:0], 2'b01} : 
+                   dout_upfifo[607:96];
+assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
+assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
+
+
 
 sume_ddr_mig u_sume_ddr_mig (
        .ddr3_addr                      (ddr3_addr),
