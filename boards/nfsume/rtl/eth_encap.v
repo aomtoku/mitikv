@@ -149,8 +149,8 @@ wire suspect_mode = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_src_uport == DNS_SERV_PORT;
 wire lookup_traffic = rx0_ftype     == ETH_FTYPE_IP      &&
                     rx0_ip_proto  == IP_PROTO_UDP;
-reg  filtered;
-wire filter_block = filtered || (out_valid && out_flag[2:1] == 2'b10);
+//reg  filtered;
+//wire filter_block = filtered || (out_valid && out_flag[2:1] == 2'b10);
 
 reg valid_udp_traffic;
 wire udp_traffic_en = valid_udp_traffic | 
@@ -207,7 +207,7 @@ always @ (posedge clk156) begin
 		suspect_auth_dns <= 0;
 		db_op0           <= 0;
 		db_op1           <= 0;
-		filtered         <= 0;
+		//filtered         <= 0;
 		pipe_stg0_0      <= 0;
 		pipe_stg0_1      <= 0;
 		pipe_stg0_2      <= 0;
@@ -241,7 +241,7 @@ always @ (posedge clk156) begin
 		//pipe_stg1_5 <= pipe_stg1_4;
 		//pipe_stg1_6 <= pipe_stg1_5;
 		//pipe_stg1_7 <= pipe_stg1_6;
-		if (!filter_block) begin
+		//if (!filter_block) begin
 			pipe_stg0_1 <= pipe_stg0_0;
 			pipe_stg0_2 <= pipe_stg0_1;
 			pipe_stg0_3 <= pipe_stg0_2;
@@ -253,23 +253,23 @@ always @ (posedge clk156) begin
 			pipe_stg0_9 <= pipe_stg0_8;
 			pipe_stg0_a <= pipe_stg0_9;
 			pipe_stg0_b <= pipe_stg0_a;
-		end else begin // Zero is inserted in regs.
-			pipe_stg0_1 <= 0;
-			pipe_stg0_2 <= 0;
-			pipe_stg0_3 <= 0;
-			pipe_stg0_4 <= 0;
-			pipe_stg0_5 <= 0;
-			pipe_stg0_6 <= 0;
-			pipe_stg0_7 <= 0;
-			pipe_stg0_8 <= 0;
-			pipe_stg0_9 <= 0;
-			pipe_stg0_a <= 0;
-			pipe_stg0_b <= 0;
-		end
+		//end else begin // Zero is inserted in regs.
+		//	pipe_stg0_1 <= 0;
+		//	pipe_stg0_2 <= 0;
+		//	pipe_stg0_3 <= 0;
+		//	pipe_stg0_4 <= 0;
+		//	pipe_stg0_5 <= 0;
+		//	pipe_stg0_6 <= 0;
+		//	pipe_stg0_7 <= 0;
+		//	pipe_stg0_8 <= 0;
+		//	pipe_stg0_9 <= 0;
+		//	pipe_stg0_a <= 0;
+		//	pipe_stg0_b <= 0;
+		//end
 
 		/* DB reply */
-		if (out_valid && out_flag[2:1] == 2'b10)
-			filtered <= 1;
+		//if (out_valid && out_flag[2:1] == 2'b10)
+		//	filtered <= 1;
 
 		/* Packet Parser */
 		if (s_axis_rx0_tvalid) begin
@@ -293,7 +293,7 @@ always @ (posedge clk156) begin
 					suspect_acnt_dns <= 0; 
 					suspect_auth_dns <= 0;
 					db_op0           <= 0;
-					filtered         <= 0;
+					//filtered         <= 0;
 				end
 				1: rx0_ftype <= {s_axis_rx0_tdata[39:32], s_axis_rx0_tdata[47:40]};
 				2: rx0_ip_proto <= s_axis_rx0_tdata[63:56];
@@ -484,7 +484,37 @@ localparam CHECK_THROUGH = 1;
 localparam CHECK_DROP    = 0;
 
 
-wire check_pkt;
+wire check_pkt_en = out_valid ;
+wire check_pkt    = (out_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
+reg load_pkt;
+reg filter_pkt;
+reg last_reg, valid_reg;
+always @ (posedge clk156)
+	if (eth_rst) begin
+		last_reg  <= 0;
+		valid_reg <= 0;
+	end else begin
+		last_reg  <= save_axis_tlast;
+		valid_reg <= save_axis_tvalid;
+	end
+always @ (*) begin
+	load_pkt = 0;
+	filter_pkt = 0;
+
+	if (check_pkt_en)
+		load_pkt = 1;
+	if (last_reg & valid_reg)
+		load_pkt = 0;
+
+	if (check_pkt_en && check_pkt == CHECK_THROUGH)
+		filter_pkt = 1;
+	if (last_reg & valid_reg)
+		filter_pkt = 0;
+end
+
+wire sw_pkt_ready = save_axis_tready & load_pkt;
+
+
 axis_interconnect_0 u_interconnect_2_1 (
 	.ACLK                 (clk156),   
 	.ARESETN              (!eth_rst), 
@@ -502,11 +532,11 @@ axis_interconnect_0 u_interconnect_2_1 (
 	// Traffic UDP with lookup into DRAM HashTable
 	.S01_AXIS_ACLK        (clk156),  
 	.S01_AXIS_ARESETN     (!eth_rst),
-	.S01_AXIS_TVALID      (save_axis_tvalid & check_pkt == CHECK_THROUGH),   
-	.S01_AXIS_TREADY      (save_axis_tread),   
+	.S01_AXIS_TVALID      (save_axis_tvalid & filter_pkt),   
+	.S01_AXIS_TREADY      (save_axis_tready),   
 	.S01_AXIS_TDATA       (save_axis_tdata),   
 	.S01_AXIS_TKEEP       (save_axis_tkeep),   
-	.S01_AXIS_TLAST       (save_axis_tlast),   
+	.S01_AXIS_TLAST       (save_axis_tlast & filter_pkt),   
 	.S01_AXIS_TUSER       (8'd0),   
 
 	.M00_AXIS_ACLK        (clk156),   
@@ -558,7 +588,7 @@ axis_data_fifo_0 u_axis_data_fifo1 (
   .s_axis_tuser        (1'b0),          
 
   .m_axis_tvalid       (save_axis_tvalid),
-  .m_axis_tready       (save_axis_tready),
+  .m_axis_tready       (sw_pkt_ready),
   .m_axis_tdata        (save_axis_tdata), 
   .m_axis_tkeep        (save_axis_tkeep), 
   .m_axis_tlast        (save_axis_tlast), 

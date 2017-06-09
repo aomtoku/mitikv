@@ -722,17 +722,17 @@ always @ (posedge u_top.u_eth_top.clk156)
 		$write("%c[0m",27); 
 	end
 
-always @ (posedge u_top.u_eth_top.clk156) 
-	if (u_top.u_eth_top.u_eth_encap.filter_block) begin
-		$write("%c[1;34m",27); 
-		$display("Clk[%8d]\t Packet is filtered.", sys_cnt);
-		//$display("\t\tSrc  IP addr  : %d.%d.%d.%d", );
-		//$display("\t\tDest IP addr  : %d.%d.%d.%d", );
-		//$display("\t\tSrc  UDP port : %d", );
-		//$display("\t\tDest UDP port : %d", );
-		//$display("\t\tHash value    : %d", );
-		$write("%c[0m",27); 
-	end
+//always @ (posedge u_top.u_eth_top.clk156) 
+//	if (u_top.u_eth_top.u_eth_encap.filter_block) begin
+//		$write("%c[1;34m",27); 
+//		$display("Clk[%8d]\t Packet is filtered.", sys_cnt);
+//		//$display("\t\tSrc  IP addr  : %d.%d.%d.%d", );
+//		//$display("\t\tDest IP addr  : %d.%d.%d.%d", );
+//		//$display("\t\tSrc  UDP port : %d", );
+//		//$display("\t\tDest UDP port : %d", );
+//		//$display("\t\tHash value    : %d", );
+//		$write("%c[0m",27); 
+//	end
 
 
 always @ (posedge u_top.u_db_top.u_db_cont.clk156)
@@ -759,6 +759,12 @@ always @ (posedge u_top.u_db_top.u_db_cont.clk156)
 			u_top.u_db_top.u_db_cont.in_hash);
 		$write("%c[0m",27); 
 	end
+
+wire [95:0] slot0 = u_top.u_db_top.u_db_cont.slot0[127:32];
+wire [95:0] slot1 = u_top.u_db_top.u_db_cont.slot1[127:32];
+wire [95:0] slot2 = u_top.u_db_top.u_db_cont.slot2[127:32];
+wire [95:0] slot3 = u_top.u_db_top.u_db_cont.slot3[127:32];
+
 always @ (posedge u_top.u_db_top.u_db_cont.clk156)
 	if (u_top.u_db_top.u_db_cont.stage_valid_0) begin
 		$write("%c[1;34m",27); 
@@ -774,6 +780,23 @@ always @ (posedge u_top.u_db_top.u_db_cont.clk156)
 			if (u_top.u_db_top.u_db_cont.key_lookup3)
 				$display("\t\tEntry 3");
 		end
+		$display("\t\tEntry0 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			slot0[95:88], slot0[87:80], slot0[79:72], slot0[71:64],
+			slot0[63:56], slot0[55:48], slot0[47:40], slot0[39:32],
+			slot0[31:16], slot0[15: 0]);
+		$display("\t\tEntry1 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			slot1[95:88], slot1[87:80], slot1[79:72], slot1[71:64],
+			slot1[63:56], slot1[55:48], slot1[47:40], slot1[39:32],
+			slot1[31:16], slot1[15: 0]);
+		$display("\t\tEntry2 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			slot2[95:88], slot2[87:80], slot2[79:72], slot2[71:64],
+			slot2[63:56], slot2[55:48], slot2[47:40], slot2[39:32],
+			slot2[31:16], slot2[15: 0]);
+		$display("\t\tEntry3 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			slot3[95:88], slot3[87:80], slot3[79:72], slot3[71:64],
+			slot3[63:56], slot3[55:48], slot3[47:40], slot3[39:32],
+			slot3[31:16], slot3[15: 0]);
+
 		$write("%c[0m",27); 
 		
 	end
@@ -873,7 +896,7 @@ initial begin
 	h0_attack_to_mitikv_type1;
 	waitethclk(5);
 	h0_attack_to_mitikv_type1;
-	waitethclk(5);
+	waitethclk(50);
 
 	$display("================================================");
 	$display("Simulation finishes.");

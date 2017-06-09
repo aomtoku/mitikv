@@ -87,8 +87,8 @@ module db_cont #(
 	input  wire [KEY_SIZE-1:0]   in_key       ,
 	input  wire [VAL_SIZE-1:0]   in_value     , 
 
-	output reg                   out_valid    ,
-	output reg  [3:0]            out_flag     ,
+	output wire                  out_valid    ,
+	output wire [3:0]            out_flag     ,
 	output wire [VAL_SIZE-1:0]   out_value     
 );
 
@@ -348,10 +348,10 @@ wire [511:0] wr_data_pre;
 reg          stage_valid_0, stage_valid_1, stage_valid_2;
 reg  [159:0] stage_data_0;
 
-wire key_lookup0 = slot0[95:0] == key_reg0;
-wire key_lookup1 = slot1[95:0] == key_reg1;
-wire key_lookup2 = slot2[95:0] == key_reg2;
-wire key_lookup3 = slot3[95:0] == key_reg3;
+wire key_lookup0 = slot0[127:32] == key_reg0;
+wire key_lookup1 = slot1[127:32] == key_reg1;
+wire key_lookup2 = slot2[127:32] == key_reg2;
+wire key_lookup3 = slot3[127:32] == key_reg3;
 
 wire table_hit = stage_valid_0 & (key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3);
 wire update_en   = stage_valid_0 & ~table_hit;
@@ -399,7 +399,11 @@ always @ (posedge clk156)
 	end else begin
 		if (init_calib_complete) begin
 			if (app_rd_data_valid) begin
-				rd_data_buf <= app_rd_data;
+				rd_data_buf <=
+                     {app_rd_data[63:0],    app_rd_data[127:64], 
+                      app_rd_data[191:128], app_rd_data[255:192], 
+                      app_rd_data[319:256], app_rd_data[383:320], 
+                      app_rd_data[447:384], app_rd_data[511:448]};
 				key_reg0    <= dout_savefifo[127:32];
 				key_reg1    <= dout_savefifo[127:32];
 				key_reg2    <= dout_savefifo[127:32];
@@ -434,6 +438,11 @@ assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ?
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
 assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
 
+// ----------------------------------------------------
+//   To MAC layer 
+// ----------------------------------------------------
+assign out_valid = stage_valid_0;
+assign out_flag  = (table_hit) ? 4'b0001 : 4'b0000;
 
 sume_ddr_mig u_sume_ddr_mig (
        .ddr3_addr                      (ddr3_addr),
