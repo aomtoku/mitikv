@@ -84,16 +84,22 @@ RTL_SRC := ../rtl/top.v \
            ../ip_catalog/sume_ddr_mig/sume_ddr_mig/user_design/rtl/ui/mig_7series_v4_0_ui_wr_data.v\
            ../ip_catalog/sume_ddr_mig/sume_ddr_mig/user_design/rtl/sume_ddr_mig.v\
            ../ip_catalog/sume_ddr_mig/sume_ddr_mig/user_design/rtl/sume_ddr_mig_mig_sim.v\
-			axi_10g_ethernet_0_sim_netlist.v\
-			axi_10g_ethernet_nonshared_sim_netlist.v\
-			../ip_catalog/axis_data_fifo_0/axis_data_fifo_0_sim_netlist.v\
-			../ip_catalog/axis_data_fifo_1/axis_data_fifo_1_sim_netlist.v\
 			../ip_catalog/asfifo_160_64/asfifo_160_64_sim_netlist.v\
 			../ip_catalog/asfifo_32_64/asfifo_32_64_sim_netlist.v\
 			../ip_catalog/asfifo_608_64/asfifo_608_64_sim_netlist.v\
-			../.srcs/sources_1/ip/sume_ddr_mig/sume_ddr_mig_sim_netlist.v\
+            ../ip_catalog/axis_interconnect_0/hdl/axis_interconnect_v1_1_vl_rfs.v ../ip_catalog/axis_interconnect_0/hdl/fifo_generator_v13_1_rfs.v\
+            ../ip_catalog/axis_interconnect_0/simulation/fifo_generator_vlog_beh.v\
+            ../ip_catalog/axis_interconnect_0/sim/axis_interconnect_0.v\
+            ../ip_catalog/axis_data_fifo_0/hdl/axis_data_fifo_v1_1_vl_rfs.v ../ip_catalog/axis_data_fifo_0/hdl/axis_infrastructure_v1_1_vl_rfs.v ../ip_catalog/axis_data_fifo_0/hdl/fifo_generator_v13_1_rfs.v\
+            ../ip_catalog/axis_data_fifo_0/sim/axis_data_fifo_0.v\
+            ../ip_catalog/axis_data_fifo_0/simulation/fifo_generator_vlog_beh.v\
+            axi_10g_ethernet_0_sim_netlist.v\
+            axi_10g_ethernet_nonshared_sim_netlist.v\
       /opt/Xilinx/Vivado/2016.4/data/verilog/src/glbl.v
 
+#../.srcs/sources_1/ip/sume_ddr_mig/sume_ddr_mig_sim_netlist.v\
+#../ip_catalog/axis_data_fifo_0/axis_data_fifo_0_sim_netlist.v\
+#../ip_catalog/axis_data_fifo_1/axis_data_fifo_1_sim_netlist.v\
 #IP_SRC := ../ip_catalog/sume_ddr_mig/sume_ddr_mig.xci  
 
 XDC_SRC := ../constraints/sume.xdc     

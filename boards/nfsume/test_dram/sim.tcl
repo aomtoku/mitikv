@@ -19,7 +19,7 @@ create_project -name dnskv -force -part ${device}
 set_property top tb_sim [get_filesets sim_1]
 set_property target_language Verilog [current_project]
 set_property default_lib "xil_defaultlib" [current_project]
-set_property verilog_define { {SIMULATION_DEBUG=1} {DRAM_SUPPORT=1} } [get_filesets sim_1]
+set_property verilog_define { {DEBUG=1} {SIMULATION_DEBUG=1} {DRAM_SUPPORT=1} } [get_filesets sim_1]
 set_property "simulator_language" "Mixed" [current_project]
 
 
