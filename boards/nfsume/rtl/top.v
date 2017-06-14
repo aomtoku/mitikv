@@ -58,7 +58,7 @@ module top
 
 
 `ifdef SIMULATION_DEBUG
-	input  wire    sys_rst_n,
+	input  wire [7:0] sys_rst_n,
 `endif /* SIMULATION_DEBUG */
 
 `ifdef DRAM_SUPPORT
@@ -159,7 +159,7 @@ always @(posedge clk200)
 /*
  *  Ethernet Top Instance
  */
-wire                eth_rst;
+wire [7:0]          eth_rst;
 localparam KEY_SIZE = 96;
 wire [KEY_SIZE-1:0] in_key;
 wire [3:0]          in_flag, out_flag;
@@ -221,8 +221,9 @@ db_top #(
 `ifndef SIMULATION_DEBUG
 	.rst              (eth_rst), 
 `else
-	.rst              (!sys_rst_n), 
+	.rst              (~sys_rst_n), 
 `endif
+    .sys_rst          (sys_rst),
 
 `ifdef DRAM_SUPPORT
 	.sys_clk_p        (buf_sys_clk_p),

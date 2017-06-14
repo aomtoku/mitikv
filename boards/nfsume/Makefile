@@ -14,10 +14,12 @@ RTL_SRC := rtl/SFP_CLK_INIT_rtl/i2c/trunk/rtl/verilog/i2c_master_bit_ctrl.v  \
            rtl/eth_mac_conf.v                                                \
            rtl/eth_encap.v                                                   \
            rtl/eth_top.v                                                     \
-           rtl/prbs.v\
+           rtl/prbs.v                                                        \
 		   ../../cores/db/rtl/db_top.v                                       \
 		   ../../cores/db/rtl/crc32.v                                        \
 		   ../../cores/db/rtl/db_cont.v                                      \
+		   ../../cores/asfifo/rtl/asfifo.v                                   \
+		   ../../cores/asfifo/rtl/graycounter.v                             \
            rtl/top.v
 
 ## libraries
@@ -35,12 +37,13 @@ RTL_SRC := rtl/SFP_CLK_INIT_rtl/i2c/trunk/rtl/verilog/i2c_master_bit_ctrl.v  \
 IP_SRC := ip_catalog/axi_10g_ethernet_0/axi_10g_ethernet_0.xci  \
           ip_catalog/axi_10g_ethernet_nonshared/axi_10g_ethernet_nonshared.xci \
           ip_catalog/axis_data_fifo_0/axis_data_fifo_0.xci      \
-		  ip_catalog/sume_ddr_mig/sume_ddr_mig.dcp              \
-		  ip_catalog/asfifo_160_64/asfifo_160_64.dcp            \
-		  ip_catalog/asfifo_32_64/asfifo_32_64.dcp              \
-		  ip_catalog/asfifo_608_64/asfifo_608_64.dcp            \
+          ip_catalog/axis_interconnect_0/axis_interconnect_0.xci      \
+          ip_catalog/asfifo_160_64/asfifo_160_64.xci \
+          ip_catalog/asfifo_32_64/asfifo_32_64.xci   \
+          ip_catalog/asfifo_608_64/asfifo_608_64.xci \
           ip_catalog/si5324_regs_rom/si5324_regs_rom.xcix
 
+#ip_catalog/sume_ddr_mig/sume_ddr_mig.xci      
 #ip_catalog/axis_data_fifo_1.xcix    
 #ip_catalog/ila_0/ila_0.xci     
 #ip_catalog/dpram_128_262k/dpram_128_262k.xci 
@@ -116,3 +119,4 @@ clean: sim-clean synth-clean
 distclean:
 	git clean -Xdf
 
+#ip_catalog/sume_ddr_mig/sume_ddr_mig/user_design/rtl/sume_ddr_mig.v

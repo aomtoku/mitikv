@@ -55,14 +55,12 @@ module db_cont #(
 )(
 	/* System Interface */
 	input  wire  clk156,
-	input  wire  rst,
+	input  wire  [7:0] rst,
+	input  wire        sys_rst,
 `ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	input  wire    sys_clk_p,
 	input  wire    sys_clk_n,
-	output wire    ui_mig_clk,
-	output wire    ui_mig_rst,
-	output wire    init_calib_complete,
 
 	inout  [63:0]  ddr3_dq,
 	inout  [ 7:0]  ddr3_dqs_n,
@@ -81,7 +79,7 @@ module db_cont #(
 	output [ 0:0]  ddr3_odt,
 `endif /* DRAM_SUPPORT */
 	/* Network Interface side */
-	input  wire                  in_valid     ,
+	input  wire [4:0]            in_valid     ,
 	input  wire [3:0]            in_op        ,
 	input  wire [HASH_SIZE-1:0]  in_hash      ,
 	input  wire [KEY_SIZE-1:0]   in_key       ,
@@ -91,6 +89,17 @@ module db_cont #(
 	output wire [3:0]            out_flag     ,
 	output wire [VAL_SIZE-1:0]   out_value     
 );
+
+// ------------------------------------------------------
+//   Reset Vector 
+// ------------------------------------------------------
+(* keep = "true" *) wire [15:0] eth_rst;
+(* dont_touch = "true" *) reg [15:0] rst_reg = 0;
+assign eth_rst = rst_reg;
+always @ (posedge clk156) begin
+	rst_reg[7:0]  <= rst;
+	rst_reg[15:8] <= rst;
+end
 
 // ------------------------------------------------------
 //   Functions
@@ -137,28 +146,31 @@ localparam ARB_WR        = 2'b10;
 // ------------------------------------------------------
 //   Timecounter for value stored in hash-table 
 // ------------------------------------------------------
-wire div_clk;
-reg [23:0] div_cnt;
-
-always @ (posedge clk156)
-	if (rst)
-		div_cnt <= 0;
-	else
-		div_cnt <= div_cnt + 1;
-
-reg [15:0] sys_cnt = 0;
-always @ (posedge div_clk)
-	sys_cnt <= sys_cnt + 1;
-
-`ifndef SIMULATION_DEBUG
-BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
-`else
-assign div_clk = div_cnt[3];
-`endif  /* SIMULATION_DEBUG */
+//wire div_clk;
+//reg [23:0] div_cnt;
+//
+//always @ (posedge clk156)
+//	if (rst[0])
+//		div_cnt <= 0;
+//	else
+//		div_cnt <= div_cnt + 1;
+//
+//reg [15:0] sys_cnt = 0;
+//always @ (posedge div_clk)
+//	sys_cnt <= sys_cnt + 1;
+//
+//`ifndef SIMULATION_DEBUG
+//BUFG u_bufg_sys_clk (.I(div_cnt[23]), .O(div_clk));
+//`else
+//assign div_clk = div_cnt[3];
+//`endif  /* SIMULATION_DEBUG */
 
 // ------------------------------------------------------
 //   User Interface for MIG 
 // ------------------------------------------------------
+wire                                  ui_mig_clk;
+wire                                  ui_mig_rst;
+wire                                  init_calib_complete;
 wire [(2*nCK_PER_CLK)-1:0]            app_ecc_multiple_err;
 wire [ADDR_WIDTH-1:0]                 app_addr;
 wire [2:0]                            app_cmd;
@@ -183,9 +195,27 @@ wire                                  app_wdf_wren;
 wire [512+64+30+1+1-1:0] din_wrfifo, dout_wrfifo;
 wire                     wr_en_wrfifo, rd_en_wrfifo;
 wire                     empty_wrfifo, full_wrfifo;
-
+//`define NOT_XILINX_FIFO
+`ifdef NOT_XILINX_FIFO
+asfifo #(
+	.DATA_WIDTH     (608),
+	.ADDRESS_WIDTH  (6)
+) u_wrfifo (
+	.dout           ( dout_wrfifo  ), 
+	.empty          ( empty_wrfifo ),
+	.rd_en          ( rd_en_wrfifo ),
+	.rd_clk         ( ui_mig_clk   ),        
+	
+	.din            ( din_wrfifo   ),  
+	.full           ( full_wrfifo  ),
+	.wr_en          ( wr_en_wrfifo ),
+	.wr_clk         ( clk156       ),
+	
+	.rst            ( eth_rst[1] | ui_mig_rst ) 
+);
+`else
 asfifo_608_64 u_wrfifo (
-	.rst      ( rst ),  
+	.rst      ( eth_rst[1] | ui_mig_rst ),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
 	.din      ( din_wrfifo   ), 
@@ -195,7 +225,7 @@ asfifo_608_64 u_wrfifo (
 	.full     ( full_wrfifo  ), 
 	.empty    ( empty_wrfifo ) 
 );
-
+`endif
 // ------------------------------------------------------
 // DRAM fifo (update)
 //     512(wr_data) + 64(wr_strb) + 30(addr) + 1(cmd) + 1(vadid)
@@ -204,10 +234,28 @@ wire [512+64+30+1+1-1:0] din_upfifo, dout_upfifo;
 wire                     wr_en_upfifo, rd_en_upfifo;
 wire                     empty_upfifo, full_upfifo;
 
+`ifdef NOT_XILINX_FIFO
+asfifo #(
+	.DATA_WIDTH     (608),
+	.ADDRESS_WIDTH  (6)
+) u_upfifo (
+	.dout           ( dout_upfifo  ), 
+	.empty          ( empty_upfifo ),
+	.rd_en          ( rd_en_upfifo ),
+	.rd_clk         ( clk156       ),        
+	
+	.din            ( din_upfifo   ),  
+	.full           ( full_upfifo  ),
+	.wr_en          ( wr_en_upfifo ),
+	.wr_clk         ( ui_mig_clk   ),
+	
+	.rst            ( eth_rst[2] | ui_mig_rst ) 
+);
+`else
 asfifo_608_64 u_upfifo (
-	.rst      ( rst | ui_mig_rst ),  
-	.wr_clk   ( clk156 ),  
-	.rd_clk   ( ui_mig_clk   ), 
+	.rst      ( eth_rst[2] | ui_mig_rst ),  
+	.wr_clk   ( ui_mig_clk   ),  
+	.rd_clk   ( clk156       ), 
 	.din      ( din_upfifo   ), 
 	.wr_en    ( wr_en_upfifo ),
 	.rd_en    ( rd_en_upfifo ),
@@ -215,6 +263,7 @@ asfifo_608_64 u_upfifo (
 	.full     ( full_upfifo  ), 
 	.empty    ( empty_upfifo ) 
 );
+`endif /* NOT_XILINX_FIFO */
 
 // ------------------------------------------------------
 // DRAM fifo (rd)
@@ -225,8 +274,26 @@ wire [30+1+1-1:0] din_rdfifo, dout_rdfifo;
 wire              wr_en_rdfifo, rd_en_rdfifo;
 wire              empty_rdfifo, full_rdfifo;
 
+`ifdef NOT_XILINX_FIFO
+asfifo #(
+	.DATA_WIDTH     (32),
+	.ADDRESS_WIDTH  (6)
+) u_rd_fifo (
+	.dout           ( dout_rdfifo  ), 
+	.empty          ( empty_rdfifo ),
+	.rd_en          ( rd_en_rdfifo ),
+	.rd_clk         ( ui_mig_clk   ),        
+	
+	.din            ( din_rdfifo   ),  
+	.full           ( full_rdfifo  ),
+	.wr_en          ( wr_en_rdfifo ),
+	.wr_clk         ( clk156       ),
+	
+	.rst            ( eth_rst[3] | ui_mig_rst ) 
+);
+`else
 asfifo_32_64 u_rd_fifo (
-	.rst      ( rst | ui_mig_rst),  
+	.rst      ( eth_rst[3] | ui_mig_rst),  
 	.wr_clk   ( clk156 ),  
 	.rd_clk   ( ui_mig_clk   ), 
 	.din      ( din_rdfifo  ), 
@@ -236,6 +303,7 @@ asfifo_32_64 u_rd_fifo (
 	.full     ( full_rdfifo  ), 
 	.empty    ( empty_rdfifo ) 
 );
+`endif /* NOT_XILINX_FIFO */
 
 // ------------------------------------------------------
 // DRAM fifo (save)
@@ -246,10 +314,28 @@ wire [32+96+30+1+1-1:0] din_savefifo, dout_savefifo;
 wire wr_en_savefifo, rd_en_savefifo;
 wire empty_savefifo, full_savefifo;
 
+`ifdef NOT_XILINX_FIFO
+asfifo #(
+	.DATA_WIDTH     (160),
+	.ADDRESS_WIDTH  (6)
+) u_save_fifo (
+	.dout           ( dout_savefifo  ), 
+	.empty          ( empty_savefifo ),
+	.rd_en          ( rd_en_savefifo ),
+	.rd_clk         ( ui_mig_clk     ),        
+	
+	.din            ( din_savefifo   ),  
+	.full           ( full_savefifo  ),
+	.wr_en          ( wr_en_savefifo ),
+	.wr_clk         ( clk156         ),
+	
+	.rst            ( eth_rst[4] | ui_mig_rst ) 
+);
+`else
 asfifo_160_64 u_save_fifo (
-	.rst      ( rst ),  
+	.rst      ( eth_rst[4] | ui_mig_rst),  
 	.wr_clk   ( clk156 ),  
-	.rd_clk   ( clk156 ), 
+	.rd_clk   ( ui_mig_clk     ), 
 	.din      ( din_savefifo   ), 
 	.wr_en    ( wr_en_savefifo ),
 	.rd_en    ( rd_en_savefifo ),
@@ -257,6 +343,7 @@ asfifo_160_64 u_save_fifo (
 	.full     ( full_savefifo  ), 
 	.empty    ( empty_savefifo ) 
 );
+`endif /* NOT_XILINX_FIFO */
 
 
 /*
@@ -306,24 +393,52 @@ end
 // ---------------------------------------------------------------
 //  Write Data using RANDOM(PRBS-based) as Replacement Policy
 // ---------------------------------------------------------------
-wire [31:0] rand;
+reg [1:0] rand_reg0, rand_reg1;
+wire [1:0] rand0, rand1;
 wire [511:0] rand_wrdata = 
-           (rand[3:2] == 0) ? {384'h0, in_key, in_value}         :
-           (rand[3:2] == 1) ? {256'h0, in_key, in_value, 128'h0} :
-           (rand[3:2] == 2) ? {128'h0, in_key, in_value, 256'h0} :
-           (rand[3:2] == 3) ? {in_key, in_value, 384'h0}         : 0;
-wire [63:0] rand_wrstrb = (rand[3:2] == 0) ? 64'h0000_0000_0000_ffff :
-                          (rand[3:2] == 1) ? 64'h0000_0000_ffff_0000 :
-                          (rand[3:2] == 2) ? 64'h0000_ffff_0000_0000 :
-                          (rand[3:2] == 3) ? 64'hffff_0000_0000_0000 : 0;
+           (rand_reg0 == 0) ? {384'h0, in_key, in_value}         :
+           (rand_reg0 == 1) ? {256'h0, in_key, in_value, 128'h0} :
+           (rand_reg0 == 2) ? {128'h0, in_key, in_value, 256'h0} :
+           (rand_reg0 == 3) ? {in_key, in_value, 384'h0}         : 0;
+wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'h0000_0000_0000_ffff :
+                          (rand_reg0 == 1) ? 64'h0000_0000_ffff_0000 :
+                          (rand_reg0 == 2) ? 64'h0000_ffff_0000_0000 :
+                          (rand_reg0 == 3) ? 64'hffff_0000_0000_0000 : 0;
 
-prbs u_prbs (
-	.do       (rand),
+//reg [3:0] rand_reg;
+//
+//always @ (posedge clk156)
+//	if (rst[5]) begin
+//		rand_reg <= 0;
+//	end else begin
+//		rand_reg <= rand_reg + 1;
+//	end
+//assign rand = rand_reg ;
+
+always @ (posedge clk156)
+	rand_reg0 <= rand0;
+
+always @ (posedge ui_mig_clk)
+	rand_reg1 <= rand1;
+
+prbs #(
+	.WIDTH (2)
+) u_prbs0 (
+	.do       (rand0),
 	.clk      (clk156),
 	.advance  (1'b1),
-	.rstn     (init_calib_complete) 
+	.rstn     (!eth_rst[5]) 
 );
 
+
+prbs #(
+	.WIDTH (2)
+) u_prbs1 (
+	.do       (rand1),
+	.clk      (ui_mig_clk),
+	.advance  (1'b1),
+	.rstn     (!ui_mig_rst) 
+);
 // ----------------------------------------------------
 //   MIG User Interface assignment
 // ---------------------------------------------------
@@ -341,67 +456,83 @@ assign app_wdf_mask = 0; // TODO
 // ----------------------------------------------------
 //   Lookup Logic
 // ---------------------------------------------------
-reg  [511:0] rd_data_buf;
-reg  [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3,
-             key_reg4, key_reg5, key_reg6, key_reg7;
-wire [127:0] slot0, slot1, slot2, slot3;
-wire [127:0] slot4, slot5, slot6, slot7;
+(* dont_touch = "true" *) reg  [511:0] rd_data_buf0, rd_data_buf1, rd_data_buf2;
+(* dont_touch = "true" *) reg  [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3;
+//(* dont_touch = "true" *) reg  [ 95:0] key_reg4, key_reg5, key_reg6, key_reg7;
+(* keep = "true" *) wire [127:0] slot0, slot1, slot2, slot3;
+//(* keep = "true" *) wire [127:0] slot4, slot5, slot6, slot7;
 wire [511:0] wr_data_pre;
-reg          stage_valid_0, stage_valid_1, stage_valid_2;
-reg  [159:0] stage_data_0;
+(* dont_touch = "true" *) reg          stage_valid_0;
+(* dont_touch = "true" *) reg stage_valid_1, stage_valid_2;
+(* dont_touch = "true" *) reg  [159:0] stage_data_0, stage_data_1, stage_data_2;
 
-wire key_lookup0 = slot0[127:32] == key_reg0;
-wire key_lookup1 = slot1[127:32] == key_reg1;
-wire key_lookup2 = slot2[127:32] == key_reg2;
-wire key_lookup3 = slot3[127:32] == key_reg3;
+(* keep = "true" *) wire key_lookup0 = slot0[127:32] == key_reg0;
+(* keep = "true" *) wire key_lookup1 = slot1[127:32] == key_reg1;
+(* keep = "true" *) wire key_lookup2 = slot2[127:32] == key_reg2;
+(* keep = "true" *) wire key_lookup3 = slot3[127:32] == key_reg3;
+(* dont_touch = "true" *) reg key_lookup_reg0, key_lookup_reg1, 
+                              key_lookup_reg2, key_lookup_reg3;
 
+(* dont_touch = "true" *) reg table_hit_reg0, table_hit_reg1;
 wire table_hit = stage_valid_0 & (key_lookup0 | key_lookup1 | key_lookup2 | key_lookup3);
 wire update_en   = stage_valid_0 & ~table_hit;
 // Todo : value comparison logic
 // 
 //wire value_cmp0  = slot;
 
-wire insert0 = (table_hit) ? key_lookup0 : 
-                             (rand[1:0] == 2'b00) ? 1'b1 : 1'b0;
-wire insert1 = (table_hit) ? key_lookup1 : 
-                             (rand[1:0] == 2'b01) ? 1'b1 : 1'b0;
-wire insert2 = (table_hit) ? key_lookup2 : 
-                             (rand[1:0] == 2'b10) ? 1'b1 : 1'b0;
-wire insert3 = (table_hit) ? key_lookup3 : 
-                             (rand[1:0] == 2'b11) ? 1'b1 : 1'b0;
+wire insert0 = (table_hit_reg0) ? key_lookup_reg0 : 
+                             (rand_reg1 == 2'b00) ? 1'b1 : 1'b0;
+wire insert1 = (table_hit_reg0) ? key_lookup_reg1 : 
+                             (rand_reg1 == 2'b01) ? 1'b1 : 1'b0;
+wire insert2 = (table_hit_reg0) ? key_lookup_reg2 : 
+                             (rand_reg1 == 2'b10) ? 1'b1 : 1'b0;
+wire insert3 = (table_hit_reg0) ? key_lookup_reg3 : 
+                             (rand_reg1 == 2'b11) ? 1'b1 : 1'b0;
 
-wire [64:0] update_strb = (key_lookup0) ? 64'h0000_0000_0000_ffff :
-                          (key_lookup1) ? 64'h0000_0000_ffff_0000 :
-                          (key_lookup2) ? 64'h0000_ffff_0000_0000 :
-                          (key_lookup3) ? 64'hffff_0000_0000_0000 : 64'h0;
+(* dont_touch = "true" *) reg  [63:0] update_strb_reg;
+(* keep = "true" *) wire [63:0] update_strb = 
+                          (key_lookup_reg0) ? 64'h0000_0000_0000_ffff :
+                          (key_lookup_reg1) ? 64'h0000_0000_ffff_0000 :
+                          (key_lookup_reg2) ? 64'h0000_ffff_0000_0000 :
+                          (key_lookup_reg3) ? 64'hffff_0000_0000_0000 : 64'h0;
 
 
 assign wr_data_pre = 
-             (insert0) ? {rd_data_buf[511:128], stage_data_0[159:32]} :
-             (insert1) ? {rd_data_buf[511:256], stage_data_0[159:32], 
-                          rd_data_buf[127:0]} : 
-             (insert2) ? {rd_data_buf[511:384], stage_data_0[159:32], 
-                          rd_data_buf[255:0]} : 
-             (insert3) ? {stage_data_0[159:32], rd_data_buf[383:0]} : 
+             (insert0) ? {rd_data_buf1[511:128], stage_data_1[159:32]} :
+             (insert1) ? {rd_data_buf1[511:256], stage_data_1[159:32], 
+                          rd_data_buf1[127:0]} : 
+             (insert2) ? {rd_data_buf1[511:384], stage_data_1[159:32], 
+                          rd_data_buf1[255:0]} : 
+             (insert3) ? {stage_data_1[159:32], rd_data_buf1[383:0]} : 
                           512'd0;
 
-assign slot0 = rd_data_buf[127:0];
-assign slot1 = rd_data_buf[255:128];
-assign slot2 = rd_data_buf[383:256];
-assign slot3 = rd_data_buf[511:384];
+assign slot0 = rd_data_buf0[127:0];
+assign slot1 = rd_data_buf0[255:128];
+assign slot2 = rd_data_buf0[383:256];
+assign slot3 = rd_data_buf0[511:384];
 
-always @ (posedge clk156)
-	if (rst) begin
-		rd_data_buf <= 0;
+//always @ (posedge clk156)
+always @ (posedge ui_mig_clk)
+	//if (rst) begin
+	if (ui_mig_rst) begin
+		rd_data_buf0 <= 0;
+		rd_data_buf1 <= 0;
+		rd_data_buf2 <= 0;
 		key_reg0    <= 0;
 		key_reg1    <= 0;
 		key_reg2    <= 0;
 		key_reg3    <= 0;
-		key_reg4    <= 0;
-		key_reg5    <= 0;
-		key_reg6    <= 0;
-		key_reg7    <= 0;
+		//key_reg4    <= 0;
+		//key_reg5    <= 0;
+		//key_reg6    <= 0;
+		//key_reg7    <= 0;
+		key_lookup_reg0 <= 0;
+		key_lookup_reg1 <= 0;
+		key_lookup_reg2 <= 0;
+		key_lookup_reg3 <= 0;
+		update_strb_reg <= 0;
 		stage_valid_0 <= 1'b0;
+		stage_valid_1 <= 1'b0;
 	end else begin
 		if (init_calib_complete) begin
 			if (app_rd_data_valid) begin
@@ -411,7 +542,7 @@ always @ (posedge clk156)
 				//          8B alignment is needed.
 				//   - in_key lower 16bits as src_udp_port at nfsume/rtl/eth_encap. 
 				//          8B alignment is not needed.
-				rd_data_buf <= app_rd_data;
+				rd_data_buf0 <= app_rd_data;
                      //{app_rd_data[63:0],    app_rd_data[127:64], 
                      // app_rd_data[191:128], app_rd_data[255:192], 
                      // app_rd_data[319:256], app_rd_data[383:320], 
@@ -425,8 +556,19 @@ always @ (posedge clk156)
 			end else begin
 				stage_valid_0 <= 1'b0;
 			end
-			stage_valid_1 <= stage_valid_0;
-			stage_valid_2 <= stage_valid_1;
+			rd_data_buf1    <= rd_data_buf0;
+			rd_data_buf2    <= wr_data_pre;
+			stage_data_1    <= stage_data_0;
+			stage_data_2    <= stage_data_1;
+			stage_valid_1   <= stage_valid_0;
+			stage_valid_2   <= stage_valid_1;
+			update_strb_reg <= update_strb;
+			table_hit_reg0  <= table_hit;
+			table_hit_reg1  <= table_hit_reg0;
+			key_lookup_reg0 <= key_lookup0;
+			key_lookup_reg1 <= key_lookup1;
+			key_lookup_reg2 <= key_lookup2;
+			key_lookup_reg3 <= key_lookup3;
 		end
 	end
 
@@ -436,25 +578,25 @@ always @ (posedge clk156)
 assign rd_en_wrfifo   = arb_switch == ARB_WR && app_rdy == 1'b1;
 assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
 assign rd_en_savefifo = app_rd_data_valid;
-assign rd_en_upfifo = ~empty_upfifo & ~in_valid;
+assign rd_en_upfifo   = ~empty_upfifo & ~in_valid[0];
 
-assign wr_en_wrfifo   = (in_valid & in_op[0] == SET_REQ) || rd_en_upfifo;
-assign wr_en_rdfifo   = in_valid & in_op[0] == GET_REQ;
-assign wr_en_savefifo = in_valid & in_op[0] == GET_REQ;
-assign wr_en_upfifo = stage_valid_0 & table_hit;
+assign wr_en_wrfifo   = (in_valid[1] & in_op[0] == SET_REQ) || rd_en_upfifo;
+assign wr_en_rdfifo   = in_valid[2] & in_op[0] == GET_REQ;
+assign wr_en_savefifo = in_valid[3] & in_op[0] == GET_REQ;
+assign wr_en_upfifo   = stage_valid_2 & table_hit_reg1;
 
 assign din_rdfifo     = {in_hash[29:0], 2'b11};
-assign din_wrfifo     =  (in_valid & in_op[0] == SET_REQ) ?  
+assign din_wrfifo     =  (in_valid[4] & in_op[0] == SET_REQ) ?  
                    {rand_wrdata, rand_wrstrb, in_hash[29:0], 2'b01} : 
                    dout_upfifo[607:96];
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
-assign din_upfifo = {wr_data_pre, update_strb, stage_data_0[31:2], 2'b11};
+assign din_upfifo = {rd_data_buf2, update_strb_reg, stage_data_2[31:2], 2'b11};
 
 // ----------------------------------------------------
 //   To MAC layer 
 // ----------------------------------------------------
-assign out_valid = stage_valid_0;
-assign out_flag  = (table_hit) ? 4'b0001 : 4'b0000;
+assign out_valid = stage_valid_2;
+assign out_flag  = (table_hit_reg1) ? 4'b0001 : 4'b0000;
 
 sume_ddr_mig u_sume_ddr_mig (
        .ddr3_addr                      (ddr3_addr),
@@ -498,7 +640,8 @@ sume_ddr_mig u_sume_ddr_mig (
        
        .sys_clk_p                      (sys_clk_p),
        .sys_clk_n                      (sys_clk_n),
-       .sys_rst                        (!rst)
+       //.sys_rst                        (!eth_rst[6])
+       .sys_rst                        (!sys_rst)
 );
 
 `ifdef DEBUG_ILA

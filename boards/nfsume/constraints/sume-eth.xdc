@@ -21,8 +21,8 @@ set_property -dict { PACKAGE_PIN AY17 IOSTANDARD LVCMOS15 } [get_ports { LED[5] 
 set_property -dict { PACKAGE_PIN P31  IOSTANDARD LVCMOS15 } [get_ports { LED[6] }];
 set_property -dict { PACKAGE_PIN K32  IOSTANDARD LVCMOS15 } [get_ports { LED[7] }];
 #
-set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells ten_gig_eth_pcs_pma_inst0/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
-set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells eth0_top/u_axi_10g_ethernet_0/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
+#set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells ten_gig_eth_pcs_pma_inst0/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
+set_property LOC GTHE2_CHANNEL_X1Y39 [get_cells u_eth_top/u_axi_10g_ethernet_0/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
 set_property PACKAGE_PIN B3 [get_ports ETH0_RX_N]
 set_property PACKAGE_PIN A5 [get_ports ETH0_TX_N]
 set_property PACKAGE_PIN A6 [get_ports ETH0_TX_P]
@@ -34,7 +34,7 @@ set_property IOSTANDARD LVCMOS15 [get_ports ETH0_RX_LOS]
 set_property PACKAGE_PIN M19 [get_ports ETH0_TX_FAULT]
 set_property IOSTANDARD LVCMOS15 [get_ports ETH0_TX_FAULT]
 
-set_property LOC GTHE2_CHANNEL_X1Y38 [get_cells eth0_top/u_axi_10g_ethernet_1/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
+set_property LOC GTHE2_CHANNEL_X1Y38 [get_cells u_eth_top/u_axi_10g_ethernet_1/inst/ten_gig_eth_pcs_pma/inst/ten_gig_eth_pcs_pma_block_i/gt0_gtwizard_10gbaser_multi_gt_i/gt0_gtwizard_gth_10gbaser_i/gthe2_i]
 set_property -dict { PACKAGE_PIN B8 } [get_ports { ETH1_TX_P }];
 set_property -dict { PACKAGE_PIN B7 } [get_ports { ETH1_TX_N }];
 set_property -dict { PACKAGE_PIN C2 } [get_ports { ETH1_RX_P }];

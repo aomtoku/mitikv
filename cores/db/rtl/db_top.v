@@ -7,7 +7,8 @@ module db_top #(
 	parameter RAM_ADDR = 22
 )(
 	input  wire                clk,
-	input  wire                rst, 
+	input  wire [7:0]          rst, 
+	input  wire                sys_rst,
 `ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	input  wire                sys_clk_p,
@@ -70,10 +71,11 @@ localparam SUSPECTION = 1,
 /*
  * Hash Function for Indexing
  */
-reg  [KEY_SIZE-1:0] key_reg;
-reg                 valid_reg, valid_regg;
-reg  [31:0]         hash_reg;
-reg  [3:0]          flag_reg;
+(* dont_touch = "true" *) reg [KEY_SIZE-1:0] key_reg;
+(* dont_touch = "true" *) reg                valid_reg, valid_regg;
+(* dont_touch = "true" *) reg [31:0]         hash_reg;
+(* dont_touch = "true" *) reg [3:0]          flag_reg;
+(* dont_touch = "true" *) reg [4:0]          valid_buf;
 wire [31:0]         hash;
 wire                crc_rst = valid_regg;
 
@@ -81,21 +83,27 @@ crc32 u_hashf (
   .data_in    (in_key),
   .crc_en     (in_valid),
   .crc_out    (hash),
-  .rst        (rst | crc_rst),
+  .rst        (rst[7] | crc_rst),
   .clk        (clk) 
 );
 
 
 always @ (posedge clk)
-	if (rst) begin
+	if (rst[7]) begin
 		key_reg   <= 0;
 		valid_reg <= 0;
 		valid_regg<= 0;
 		hash_reg  <= 0;
 		flag_reg  <= 0;
+		valid_buf <= 0;
 	end else begin
 		key_reg   <= in_key;
 		valid_reg <= in_valid;
+		valid_buf[0] <= in_valid;
+		valid_buf[1] <= in_valid;
+		valid_buf[2] <= in_valid;
+		valid_buf[3] <= in_valid;
+		valid_buf[4] <= in_valid;
 		valid_regg<= valid_reg;
 		flag_reg  <= in_flag;
 		if (valid_reg) 
@@ -116,14 +124,11 @@ db_cont #(
 	/* System Interface */
 	.clk156       (clk),
 	.rst          (rst),
-
+	.sys_rst      (sys_rst),
 `ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	.sys_clk_p    (sys_clk_p),
 	.sys_clk_n    (sys_clk_n),
-	.ui_mig_clk   (),
-	.ui_mig_rst   (),
-	.init_calib_complete(init_calib_complete),
 	/* DDR3 SDRAM Interface */
 	.ddr3_addr       (ddr3_addr),
 	.ddr3_ba         (ddr3_ba),
@@ -142,7 +147,7 @@ db_cont #(
 	.ddr3_odt        (ddr3_odt),
 `endif 
 	/* Network Interface side */
-	.in_valid     (valid_reg),
+	.in_valid     (valid_buf),
 	.in_op        (flag_reg),
 	.in_hash      (hash_value),
 	.in_key       (key_reg),

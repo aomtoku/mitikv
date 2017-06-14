@@ -86,17 +86,30 @@ vlog ../ip_catalog/axis_interconnect_0/hdl/fifo_generator_v13_1_rfs.v
 vlog ../ip_catalog/axis_interconnect_0/sim/axis_interconnect_0.v
 vlog ../ip_catalog/axis_interconnect_0/simulation/fifo_generator_vlog_beh.v
 
+# Xilinx FIFO
+vlog ../ip_catalog/asfifo_160_64/hdl/fifo_generator_v13_1_rfs.v
+vlog ../ip_catalog/asfifo_160_64/simulation/fifo_generator_vlog_beh.v
+vlog ../ip_catalog/asfifo_160_64/sim/asfifo_160_64.v
+vlog ../ip_catalog/asfifo_32_64/sim/asfifo_32_64.v
+vlog ../ip_catalog/asfifo_608_64/sim/asfifo_608_64.v
+
+# RTL FIFO
+#vlog ../../../cores/asfifo/rtl/asfifo.v
+#vlog ../../../cores/asfifo/rtl/graycounter.v
+
+
 # IP Netlist for Simulation
 vlog axi_10g_ethernet_0_sim_netlist.v
 vlog axi_10g_ethernet_nonshared_sim_netlist.v
 #vlog axis_data_fifo_0_sim_netlist.v
 #vlog axis_interconnect_0_sim_netlist.v
-vlog ../ip_catalog/asfifo_160_64/asfifo_160_64_sim_netlist.v
-vlog ../ip_catalog/asfifo_32_64/asfifo_32_64_sim_netlist.v
-vlog ../ip_catalog/asfifo_608_64/asfifo_608_64_sim_netlist.v
+#vlog ../ip_catalog/asfifo_160_64/asfifo_160_64_sim_netlist.v
+#vlog ../ip_catalog/asfifo_32_64/asfifo_32_64_sim_netlist.v
+#vlog ../ip_catalog/asfifo_608_64/asfifo_608_64_sim_netlist.v
 
 # DB's RTL
 vlog +define+SIMULATION_DEBUG +define+DRAM_SUPPORT ../../../cores/db/rtl/db_top.v
+#vlog +define+SIMULATION_DEBUG +define+DRAM_SUPPORT +define+NOT_XILINX_FIFO ../../../cores/db/rtl/db_cont.v
 vlog +define+SIMULATION_DEBUG +define+DRAM_SUPPORT ../../../cores/db/rtl/db_cont.v
 vlog ../../../cores/db/rtl/crc32.v
 
@@ -126,6 +139,7 @@ onerror {resume}
 
 #View sim_tb_top signals in waveform#
 add wave sim:/tb_sim/*
+add wave sim:/tb_sim/u_top/u_db_top/*
 add wave sim:/tb_sim/u_top/u_db_top/u_db_cont/*
 add wave sim:/tb_sim/u_top/u_eth_top/*
 add wave sim:/tb_sim/u_top/u_eth_top/u_eth_encap/*
