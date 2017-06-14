@@ -37,7 +37,7 @@ module eth_top #(
 `endif /* SIM_ETH_IP */ 
 	input  wire                clk100,
 	input  wire                sys_rst,
-	output wire                eth_rst,
+	output wire [7:0]         eth_rst,
 	output wire [7:0]          debug,
 
 	output wire                db_clk,
@@ -68,10 +68,12 @@ sfp_refclk_init sfp_refclk_init0 (
 /*
  *  Ethernet Clock Domain : Reset
  */
-reg [13:0] cold_counter = 0; 
-reg        eth_rst_reg = 0;
+(* dont_touch = "true" *) wire [15:0] eth_rst_b; 
+(* dont_touch = "true" *) reg [13:0] cold_counter = 0; 
+(* dont_touch = "true" *) reg [23:0] eth_rst_reg = 0;
 `ifndef SIM_ETH_IP
-assign eth_rst = eth_rst_reg;
+assign eth_rst   = eth_rst_reg[7:0];
+assign eth_rst_b = eth_rst_reg[23:8];
 always @(posedge clk156) 
 `ifndef SIMULATION_DEBUG
 	if (cold_counter != 14'h3fff) begin
@@ -79,9 +81,9 @@ always @(posedge clk156)
 	if (cold_counter != 14'h9) begin
 `endif /* SIMULATION_DEBUG */
 		cold_counter <= cold_counter + 14'd1;
-		eth_rst_reg  <= 1'b1;
+		eth_rst_reg  <= 24'hffffff;
 	end else
-		eth_rst_reg  <= 1'b0;
+		eth_rst_reg  <= 24'h00;
 `endif /* SIM_ETH_IP */
 
 
@@ -141,7 +143,7 @@ eth_encap #(
 	.VAL_SIZE  (32)
 ) u_eth_encap (
 	.clk156           (clk156),
-	.eth_rst          (eth_rst),
+	.eth_rst          (eth_rst_b[15:0]),
 	.debug            (eth_debug),
 
 	.in_key           (in_key   ),
@@ -199,7 +201,7 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 	.refclk_p                      (SFP_CLK_P),
 	.dclk                          (clk100),
 `ifndef SIMULATION_DEBUG
-	.reset                         (eth_rst),
+	.reset                         (eth_rst_b[15]),
 `else
 	.reset                         (sys_rst),
 `endif /* SIMULATION_DEBUG */
@@ -239,8 +241,8 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 `else
 	.sim_speedup_control           (1'b1),
 `endif /* SIMULATION_DEBUG */
-	.rx_axis_aresetn               (!eth_rst),
-	.tx_axis_aresetn               (!eth_rst),
+	.rx_axis_aresetn               (!eth_rst_b[14]),
+	.tx_axis_aresetn               (!eth_rst_b[13]),
 
 	.tx_statistics_valid           (tx_statistics_valid),         
 	.rx_statistics_valid           (rx_statistics_valid),
@@ -264,8 +266,8 @@ axi_10g_ethernet_0 u_axi_10g_ethernet_0 (
 
 
 axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
-	.tx_axis_aresetn              (!eth_rst),      
-	.rx_axis_aresetn              (!eth_rst),      
+	.tx_axis_aresetn              (!eth_rst_b[12]),      
+	.rx_axis_aresetn              (!eth_rst_b[11]),      
 	.tx_ifg_delay                 (8'd0),          
 	.dclk                         (clk100),        
 	.txp                          (ETH1_RX_P),     
@@ -290,7 +292,7 @@ axi_10g_ethernet_nonshared u_axi_10g_ethernet_1 (
 	.tx_resetdone                 (),          
 	.rx_resetdone                 (),          
 	.coreclk                      (clk156),    
-	.areset                       (eth_rst),        
+	.areset                       (eth_rst_b[10]),        
 	.gttxreset                    (gttxreset),      
 	.gtrxreset                    (gtrxreset),      
 	.qplllock                     (qplllock),       
