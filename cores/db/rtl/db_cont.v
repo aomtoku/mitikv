@@ -595,8 +595,30 @@ assign din_upfifo = {rd_data_buf2, update_strb_reg, stage_data_2[31:2], 2'b11};
 // ----------------------------------------------------
 //   To MAC layer 
 // ----------------------------------------------------
-assign out_valid = stage_valid_2;
-assign out_flag  = (table_hit_reg1) ? 4'b0001 : 4'b0000;
+//@ui_mig_clk     ----> clk156
+//  stage_valid_2
+//  table_hit_reg1
+wire [31:0] flag_out_mig = (table_hit_reg1) ? 32'd1 : 32'd0;
+wire [31:0] dout_flag;
+wire        rd_en_flag;
+wire        empty_flag, full_flag;
+
+assign rd_en_flag = !empty_flag;
+asfifo_32_64 u_flag_fifo (
+	.rst      ( eth_rst[3] | ui_mig_rst),  
+	.wr_clk   ( ui_mig_clk   ),  
+	.rd_clk   ( clk156       ), 
+	.din      ( flag_out_mig ), 
+	.wr_en    ( stage_valid_2 ),
+	.rd_en    ( rd_en_flag ),
+	.dout     ( dout_flag  ), 
+	.full     ( full_flag  ), 
+	.empty    ( empty_flag ) 
+);
+//assign out_valid = stage_valid_2;
+//assign out_flag  = (table_hit_reg1) ? 4'b0001 : 4'b0000;
+assign out_valid = rd_en_flag;
+assign out_flag  = dout_flag[3:0];
 
 sume_ddr_mig u_sume_ddr_mig (
        .ddr3_addr                      (ddr3_addr),

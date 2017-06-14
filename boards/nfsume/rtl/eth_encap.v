@@ -6,7 +6,7 @@ module eth_encap #(
 	parameter VAL_SIZE = 32
 )(
 	input  wire        clk156,
-	input  wire        eth_rst,
+	input  wire [15:0] eth_rst,
 	output wire [ 7:0] debug,
 
 	output wire [KEY_SIZE-1:0] in_key,
@@ -128,7 +128,7 @@ wire udp_traffic_en = valid_udp_traffic |
                          (p0_lookup_traffic_en[8] & p0_axis_tvalid);
 
 always @ (posedge clk156) begin
-	if (eth_rst)
+	if (eth_rst[0])
 		valid_udp_traffic <= 0;
 	else begin
 		if (p0_lookup_traffic_en[8] & p0_axis_tvalid)
@@ -140,7 +140,7 @@ end
 
 
 always @ (posedge clk156) begin
-	if (eth_rst) begin
+	if (eth_rst[1]) begin
 		rx_cnt0          <= 0;
 		rx_cnt1          <= 0;
 		hit_cnt          <= 0;
@@ -423,7 +423,7 @@ reg filter_pkt, filter_pkt_next;
 reg last_reg, valid_reg;
 
 always @ (posedge clk156)
-	if (eth_rst) begin
+	if (eth_rst[2]) begin
 		last_reg  <= 0;
 		valid_reg <= 0;
 	end else begin
@@ -447,7 +447,7 @@ always @ (*) begin
 end
 
 always @ (posedge clk156) 
-	if (eth_rst) begin
+	if (eth_rst[3]) begin
 		load_pkt <= 0;
 		filter_pkt <= 0;
 	end else begin
@@ -461,11 +461,11 @@ wire s0_ready;
 
 axis_interconnect_0 u_interconnect_2_1 (
 	.ACLK                 (clk156),   
-	.ARESETN              (!eth_rst), 
+	.ARESETN              (!eth_rst[4]), 
 
 	// traffic except UDP
 	.S00_AXIS_ACLK        (clk156),  
-	.S00_AXIS_ARESETN     (!eth_rst), 
+	.S00_AXIS_ARESETN     (!eth_rst[5]), 
 	.S00_AXIS_TVALID      (p0_axis_tvalid & !udp_traffic_en), // todo   
 	.S00_AXIS_TREADY      (s0_ready),   
 	.S00_AXIS_TDATA       (p0_axis_tdata),   
@@ -475,7 +475,7 @@ axis_interconnect_0 u_interconnect_2_1 (
 
 	// Traffic UDP with lookup into DRAM HashTable
 	.S01_AXIS_ACLK        (clk156),  
-	.S01_AXIS_ARESETN     (!eth_rst),
+	.S01_AXIS_ARESETN     (!eth_rst[6]),
 	.S01_AXIS_TVALID      (save_axis_tvalid & sw_pkt_ready_checked),   
 	.S01_AXIS_TREADY      (save_axis_tready),   
 	.S01_AXIS_TDATA       (save_axis_tdata),   
@@ -484,7 +484,7 @@ axis_interconnect_0 u_interconnect_2_1 (
 	.S01_AXIS_TUSER       (8'd0),   
 
 	.M00_AXIS_ACLK        (clk156),   
-	.M00_AXIS_ARESETN     (!eth_rst), 
+	.M00_AXIS_ARESETN     (!eth_rst[7]), 
 	.M00_AXIS_TVALID      (out_axis_tvalid),  
 	.M00_AXIS_TREADY      (out_axis_tready),  
 	.M00_AXIS_TDATA       (out_axis_tdata),   
@@ -492,13 +492,17 @@ axis_interconnect_0 u_interconnect_2_1 (
 	.M00_AXIS_TLAST       (out_axis_tlast),   
 	.M00_AXIS_TUSER       ({out_axis_dummy_tuser, out_axis_tuser}),   
 	.S00_ARB_REQ_SUPPRESS (1'b0),  // input wire
-	.S01_ARB_REQ_SUPPRESS (1'b0)  // input wire 
+	.S01_ARB_REQ_SUPPRESS (1'b0),  // input wire 
+
+	.S00_FIFO_DATA_COUNT  (),    // output wire [31 : 0] S00_FIFO_DATA_COUNT
+	.S01_FIFO_DATA_COUNT  (),    // output wire [31 : 0] S01_FIFO_DATA_COUNT
+	.M00_FIFO_DATA_COUNT  ()    // output wire [31 : 0] M00_FIFO_DATA_COUNT
 );
 
 
 // Nomarl traffic : to network port 1 from switch_interconnect
 axis_data_fifo_0 u_axis_data_fifo0 (
-	.s_axis_aresetn      (!eth_rst),  
+	.s_axis_aresetn      (!eth_rst[8]),  
 	.s_axis_aclk         (clk156),  
 	
 	.s_axis_tvalid       (out_axis_tvalid),
@@ -521,7 +525,7 @@ axis_data_fifo_0 u_axis_data_fifo0 (
 
 // Lookuped traffic : to switch from network port0
 axis_data_fifo_0 u_axis_data_fifo1 (
-	.s_axis_aresetn      (!eth_rst),  
+	.s_axis_aresetn      (!eth_rst[9]),  
 	.s_axis_aclk         (clk156),  
 	
 	.s_axis_tvalid       (p0_axis_tvalid & udp_traffic_en),
@@ -544,7 +548,7 @@ axis_data_fifo_0 u_axis_data_fifo1 (
 );
 
 axis_data_fifo_0 u_axis_data_fifo2 (
-	.s_axis_aresetn      (!eth_rst),   
+	.s_axis_aresetn      (!eth_rst[10]),   
 	.s_axis_aclk         (clk156), 
 	
 	.s_axis_tvalid       (s_axis_rx1_tvalid),

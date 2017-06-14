@@ -42,23 +42,24 @@
  */
 `timescale 1ps / 1ps
 
-module prbs (
-	   do,
-	   clk,
-	   advance,
-	   rstn
-	   );
+module prbs #(
+	parameter WIDTH = 31 //WIDTH is the size of the data bus
+)(
+	output wire [WIDTH-1:0] do,
+	input  wire  clk,
+	input  wire  advance,
+	input  wire  rstn
+);
 
-parameter WIDTH = 31; //WIDTH is the size of the data bus
 
-output [WIDTH-1:0] do; //data out
+//output [WIDTH-1:0] do; //data out
  
-input clk;
-input advance; //indicates when to advance the prbs mechanism
-input rstn;
+//input clk;
+//input advance; //indicates when to advance the prbs mechanism
+//input rstn;
  
 reg [30:0] rpg; //current prbs state
-wire [2*WIDTH-1:0] do;
+//wire [2*WIDTH-1:0] do;
  
 wire [30:0] r0; //next prbs state
 
