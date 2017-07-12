@@ -15,11 +15,13 @@ RTL_SRC := rtl/SFP_CLK_INIT_rtl/i2c/trunk/rtl/verilog/i2c_master_bit_ctrl.v  \
            rtl/eth_encap.v                                                   \
            rtl/eth_top.v                                                     \
            rtl/prbs.v                                                        \
+		   rtl/fallthrough_small_fifo.v                                      \
+		   rtl/small_fifo.v                                                  \
 		   ../../cores/db/rtl/db_top.v                                       \
 		   ../../cores/db/rtl/crc32.v                                        \
 		   ../../cores/db/rtl/db_cont.v                                      \
 		   ../../cores/asfifo/rtl/asfifo.v                                   \
-		   ../../cores/asfifo/rtl/graycounter.v                             \
+		   ../../cores/asfifo/rtl/graycounter.v                              \
            rtl/top.v
 
 ## libraries
@@ -41,6 +43,7 @@ IP_SRC := ip_catalog/axi_10g_ethernet_0/axi_10g_ethernet_0.xci  \
           ip_catalog/asfifo_160_64/asfifo_160_64.xci \
           ip_catalog/asfifo_32_64/asfifo_32_64.xci   \
           ip_catalog/asfifo_608_64/asfifo_608_64.xci \
+          ip_catalog/ila_1/ila_1.xci \
           ip_catalog/si5324_regs_rom/si5324_regs_rom.xcix
 
 #ip_catalog/sume_ddr_mig/sume_ddr_mig.xci      

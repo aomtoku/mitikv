@@ -790,27 +790,27 @@ always @ (posedge u_top.u_db_top.u_db_cont.ui_mig_clk)
 			u_top.u_db_top.u_db_cont.table_hit ? "HIT" : "MISS");
 		if (u_top.u_db_top.u_db_cont.table_hit) begin
 			if (u_top.u_db_top.u_db_cont.key_lookup0)
-				$display("\t\tEntry 0");
+				$display("\t\tSlot 0");
 			if (u_top.u_db_top.u_db_cont.key_lookup1)
-				$display("\t\tEntry 1");
+				$display("\t\tSlot 1");
 			if (u_top.u_db_top.u_db_cont.key_lookup2)
-				$display("\t\tEntry 2");
+				$display("\t\tSlot 2");
 			if (u_top.u_db_top.u_db_cont.key_lookup3)
-				$display("\t\tEntry 3");
+				$display("\t\tSlot 3");
 		end
-		$display("\t\tEntry0 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+		$display("\t\tSlot0 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
 			slot0[95:88], slot0[87:80], slot0[79:72], slot0[71:64],
 			slot0[63:56], slot0[55:48], slot0[47:40], slot0[39:32],
 			slot0[31:16], slot0[15: 0]);
-		$display("\t\tEntry1 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+		$display("\t\tSlot1 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
 			slot1[95:88], slot1[87:80], slot1[79:72], slot1[71:64],
 			slot1[63:56], slot1[55:48], slot1[47:40], slot1[39:32],
 			slot1[31:16], slot1[15: 0]);
-		$display("\t\tEntry2 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+		$display("\t\tSlot2 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
 			slot2[95:88], slot2[87:80], slot2[79:72], slot2[71:64],
 			slot2[63:56], slot2[55:48], slot2[47:40], slot2[39:32],
 			slot2[31:16], slot2[15: 0]);
-		$display("\t\tEntry3 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+		$display("\t\tSlot3 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
 			slot3[95:88], slot3[87:80], slot3[79:72], slot3[71:64],
 			slot3[63:56], slot3[55:48], slot3[47:40], slot3[39:32],
 			slot3[31:16], slot3[15: 0]);

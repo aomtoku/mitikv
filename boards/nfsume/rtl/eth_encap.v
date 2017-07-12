@@ -118,8 +118,8 @@ wire filter_mode    = rx1_ftype      == ETH_FTYPE_IP      &&
                       rx1_icmp_code  == ICMP_ADMIN_PROHIB) && 
                       s_axis_rx1_tvalid;
 wire suspect_mode   = rx0_ftype      == ETH_FTYPE_IP      &&
-                      rx0_ip_proto   == IP_PROTO_UDP      &&
-                      rx0_src_uport  == DNS_SERV_PORT;
+                      rx0_ip_proto   == IP_PROTO_UDP      ;//&&
+                      //rx0_src_uport  == DNS_SERV_PORT;
 wire lookup_traffic = rx0_ftype      == ETH_FTYPE_IP      &&
                       rx0_ip_proto   == IP_PROTO_UDP;
 
@@ -394,7 +394,6 @@ assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip,
 
 assign debug = hit_cnt;
 
-
 wire        save_axis_tvalid;
 wire [63:0] save_axis_tdata;
 wire        save_axis_tready;
@@ -414,13 +413,37 @@ wire [6:0]  out_axis_dummy_tuser;
 localparam CHECK_THROUGH = 0;
 localparam CHECK_DROP    = 1;
 
-
-wire check_pkt_en = out_valid ;
-wire check_pkt    = (out_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
+wire [31:0] inbound_rd_dcnt, inbound_wr_dcnt;
+wire [31:0] outbound_rd_dcnt, outbound_wr_dcnt;
+wire [31:0] inter_s0_dcnt, inter_s1_dcnt, inter_s2_dcnt;
 
 reg load_pkt, load_pkt_next;
 reg filter_pkt, filter_pkt_next;
 reg last_reg, valid_reg;
+
+wire empty_valid_fifo, full_valid_fifo;
+wire [3:0] dout_flag;
+wire trig_rd_en = !empty_valid_fifo & !load_pkt;
+
+wire check_pkt_en = trig_rd_en;//out_valid ;
+wire check_pkt    = (dout_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
+//(out_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
+
+fallthrough_small_fifo #(
+	.WIDTH           (4),
+	.MAX_DEPTH_BITS  (3)
+) u_valid_fifo (
+	.din         (out_flag),     // Data in
+	.wr_en       (out_valid),   // Write enable
+	.rd_en       (trig_rd_en),   // Read the next word
+	.dout        (dout_flag),    // Data out
+	.full        (full_valid_fifo),
+	.empty       (empty_valid_fifo),
+	.nearly_full (),
+	.prog_full   (),
+	.reset       (eth_rst[1]),
+	.clk         (clk156)
+);
 
 always @ (posedge clk156)
 	if (eth_rst[2]) begin
@@ -494,9 +517,9 @@ axis_interconnect_0 u_interconnect_2_1 (
 	.S00_ARB_REQ_SUPPRESS (1'b0),  // input wire
 	.S01_ARB_REQ_SUPPRESS (1'b0),  // input wire 
 
-	.S00_FIFO_DATA_COUNT  (),    // output wire [31 : 0] S00_FIFO_DATA_COUNT
-	.S01_FIFO_DATA_COUNT  (),    // output wire [31 : 0] S01_FIFO_DATA_COUNT
-	.M00_FIFO_DATA_COUNT  ()    // output wire [31 : 0] M00_FIFO_DATA_COUNT
+	.S00_FIFO_DATA_COUNT  (inter_s0_dcnt),    // output wire [31 : 0] S00_FIFO_DATA_COUNT
+	.S01_FIFO_DATA_COUNT  (inter_s1_dcnt),    // output wire [31 : 0] S01_FIFO_DATA_COUNT
+	.M00_FIFO_DATA_COUNT  (inter_s2_dcnt)    // output wire [31 : 0] M00_FIFO_DATA_COUNT
 );
 
 
@@ -519,8 +542,8 @@ axis_data_fifo_0 u_axis_data_fifo0 (
 	.m_axis_tlast        (m_axis_tx1_tlast), 
 	.m_axis_tuser        (m_axis_tx1_tuser), 
 	.axis_data_count     (), 
-	.axis_wr_data_count  (), 
-	.axis_rd_data_count  ()  
+	.axis_wr_data_count  (outbound_wr_dcnt), 
+	.axis_rd_data_count  (outbound_rd_dcnt)  
 );
 
 // Lookuped traffic : to switch from network port0
@@ -543,8 +566,8 @@ axis_data_fifo_0 u_axis_data_fifo1 (
 	.m_axis_tuser        (save_axis_tuser), 
 	
 	.axis_data_count     (), 
-	.axis_wr_data_count  (), 
-	.axis_rd_data_count  ()  
+	.axis_wr_data_count  (inbound_wr_dcnt), 
+	.axis_rd_data_count  (inbound_rd_dcnt)  
 );
 
 axis_data_fifo_0 u_axis_data_fifo2 (
@@ -574,31 +597,76 @@ axis_data_fifo_0 u_axis_data_fifo2 (
  * DEBUG
  */
 
-`ifdef DEBUG_ILA
-ila_0 inst_ila (
+
+/*
+ *  Statistics
+ */
+reg [31:0] drop_pkts;
+reg [31:0] pass_pkts;
+reg [31:0] all_pkts;
+reg [31:0] inbound_pkts;
+reg [31:0] outbound_pkts;
+
+always @ (posedge clk156) begin
+	if (eth_rst) begin
+		drop_pkts     <= 0;
+		pass_pkts     <= 0;
+		all_pkts      <= 0;
+		inbound_pkts  <= 0;
+		outbound_pkts <= 0;
+	end else begin
+		if (check_pkt_en) begin
+			all_pkts  <= all_pkts + 1;
+			if (check_pkt == CHECK_DROP)
+				drop_pkts <= drop_pkts + 1;
+			else if (check_pkt == CHECK_THROUGH)
+				pass_pkts <= pass_pkts + 1;
+		end
+		if (s_axis_rx0_tlast && s_axis_rx0_tvalid)
+			inbound_pkts <= inbound_pkts + 1;
+		if (m_axis_tx1_tlast && m_axis_tx1_tvalid)
+			outbound_pkts <= outbound_pkts + 1;
+	end
+end
+
+
+///*
+// * Errors related to FIFO full
+// */
+//reg [31:0] fifo_error;
+//always @ (posedge clk156) begin
+//	if (eth_rst)
+//		fifo_error <= 0;
+//	else begin
+//
+//	end
+//end
+`ifndef DEBUG
+ila_1 inst_ila (
 	.clk     (clk156), // input wire clk
 	/* verilator lint_off WIDTH */
-	.probe0  ({ // 256pin
-		//126'd0          ,
-		s_axis_rx0_tdata, //64
-		suspect_parm_dns, //16
-		in_key[95:0]    ,//96
-		rx0_ip_proto    ,// 8
-		rx1_ip_proto    ,// 8
-		rx1_icmp_type   ,// 8
-		rx1_icmp_code   ,// 8
-		in_valid        ,// 1
-		rx_cnt0         ,//10
-		rx_cnt1         ,//10
-		filter_block    ,// 1
-		suspect_mode    ,// 1
-		filter_dst_udp  ,
-		filter_src_udp  ,
-		filter_mode     ,// 1
-		db_op0           // 4
+	.probe0  ({
+		inbound_rd_dcnt, 
+		inbound_wr_dcnt,
+		outbound_rd_dcnt, 
+		outbound_wr_dcnt,
+		inter_s0_dcnt, 
+		inter_s1_dcnt, 
+		inter_s2_dcnt,
+		drop_pkts,
+		pass_pkts,
+		all_pkts,
+		inbound_pkts[28:0],
+		outbound_pkts[28:0],
+		save_axis_tready,
+		load_pkt_next,
+		filter_pkt_next,
+		s0_ready,
+		in_valid,
+		out_valid
 	})/* verilator lint_on WIDTH */ 
 );
-`endif /* DEBUG_ILA */
+`endif
 
 endmodule
 

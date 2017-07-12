@@ -355,8 +355,8 @@ wire [2:0]   wr_fifo_cmd  = MIG_CMD_WRITE ;
 wire [2:0]   rd_fifo_cmd  = MIG_CMD_READ  ;
 // Todo : address will be 6'b00000 as lower bits.
 //        to lookup 4 entries.
-wire [29:0]  wr_fifo_addr = dout_wrfifo[31:2];
-wire [29:0]  rd_fifo_addr = dout_rdfifo[31:2];
+wire [29:0]  wr_fifo_addr = {dout_wrfifo[31:7], 5'h00};
+wire [29:0]  rd_fifo_addr = {dout_rdfifo[31:7], 5'h00};
 
 wire [63:0]  wrfifo_strb  = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data  = dout_wrfifo[607:96];
@@ -595,15 +595,36 @@ assign din_upfifo = {rd_data_buf2, update_strb_reg, stage_data_2[31:2], 2'b11};
 // ----------------------------------------------------
 //   To MAC layer 
 // ----------------------------------------------------
-//@ui_mig_clk     ----> clk156
-//  stage_valid_2
-//  table_hit_reg1
+
+// Todo : Replacing FIFO into simple logic
+// 
+// @ui_mig_clk     ----> clk156
+//   stage_valid_2
+//   table_hit_reg1
 wire [31:0] flag_out_mig = (table_hit_reg1) ? 32'd1 : 32'd0;
 wire [31:0] dout_flag;
 wire        rd_en_flag;
 wire        empty_flag, full_flag;
 
 assign rd_en_flag = !empty_flag;
+`ifdef NOT_XILINX_FIFO
+asfifo #(
+	.DATA_WIDTH     (32),
+	.ADDRESS_WIDTH  (6)
+) u_flag_fifo (
+	.dout           ( dout_flag  ), 
+	.empty          ( empty_flag ),
+	.rd_en          ( rd_en_flag ),
+	.rd_clk         ( clk156     ),        
+	
+	.din            ( flag_out_mig   ),  
+	.full           ( full_flag      ),
+	.wr_en          ( stage_valid_2  ),
+	.wr_clk         ( ui_mig_clk     ),
+	
+	.rst            ( eth_rst[3] | ui_mig_rst ) 
+);
+`else
 asfifo_32_64 u_flag_fifo (
 	.rst      ( eth_rst[3] | ui_mig_rst),  
 	.wr_clk   ( ui_mig_clk   ),  
@@ -615,8 +636,7 @@ asfifo_32_64 u_flag_fifo (
 	.full     ( full_flag  ), 
 	.empty    ( empty_flag ) 
 );
-//assign out_valid = stage_valid_2;
-//assign out_flag  = (table_hit_reg1) ? 4'b0001 : 4'b0000;
+`endif /* NOT_XILINX_FIFO */
 assign out_valid = rd_en_flag;
 assign out_flag  = dout_flag[3:0];
 
@@ -666,6 +686,22 @@ sume_ddr_mig u_sume_ddr_mig (
        .sys_rst                        (!sys_rst)
 );
 
+`ifndef SIMULATION_DEBUG
+ila_1 inst_ila (
+	.clk     (ui_mig_clk), // input wire clk
+	/* verilator lint_off WIDTH */
+	.probe0  ({
+		app_addr,
+		app_cmd,
+		app_en,
+		init_calib_complete,
+		full_flag, 
+		full_savefifo,
+		full_rdfifo,
+		full_wrfifo
+	})/* verilator lint_on WIDTH */ 
+);
+`endif
 `ifdef DEBUG_ILA
 ila_0 u_ila (
 	.clk     (clk156), // input wire clk
