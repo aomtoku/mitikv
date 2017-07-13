@@ -209,9 +209,24 @@ always @ (posedge clk156) begin
 
 		/* Packet Parser */
 		if (s_axis_rx0_tvalid) begin
-			if (s_axis_rx0_tlast)
+			if (s_axis_rx0_tlast) begin
 				rx_cnt0 <= 0;
-			else
+
+				rx0_ip_proto      <= 0;
+				rx0_src_ip        <= 0;
+				rx0_dst_ip        <= 0;
+				rx0_src_uport     <= 0;
+				rx0_dst_uport     <= 0;
+				rx0_ftype         <= 0;
+				rx0_icmp_type     <= 0;
+				rx0_icmp_code     <= 0;
+				suspect_qid_dns  <= 0; 
+				suspect_parm_dns <= 0; 
+				suspect_qcnt_dns <= 0; 
+				suspect_acnt_dns <= 0; 
+				suspect_auth_dns <= 0;
+				db_op0           <= 0;
+			end else
 				rx_cnt0 <= rx_cnt0 + 1;
 			case (rx_cnt0)
 				0: begin // Reset all registers
@@ -284,9 +299,30 @@ always @ (posedge clk156) begin
 		end
 		// Port 1
 		if (s_axis_rx1_tvalid) begin
-			if (s_axis_rx1_tlast)
+			if (s_axis_rx1_tlast) begin
 				rx_cnt1 <= 0;
-			else
+
+				rx1_ip_proto      <= 0;
+				rx1_src_ip        <= 0;
+				rx1_dst_ip        <= 0;
+				rx1_src_uport     <= 0;
+				rx1_dst_uport     <= 0;
+				rx1_ftype         <= 0;
+				rx1_icmp_type     <= 0;
+				rx1_icmp_code     <= 0;
+				filter_ip_proto  <= 0;
+				filter_src_ip    <= 0; 
+				filter_dst_ip    <= 0; 
+				filter_dst_udp   <= 0; 
+				filter_len_udp   <= 0; 
+				filter_qid_dns   <= 0; 
+				filter_src_udp   <= 0;
+				filter_parm_dns  <= 0; 
+				filter_qcnt_dns  <= 0; 
+				filter_acnt_dns  <= 0; 
+				filter_auth_dns  <= 0;
+				db_op1           <= 0;
+			end else
 				rx_cnt1 <= rx_cnt1 + 1;
 			case (rx_cnt1)
 				0: begin // Reset all registers
@@ -656,12 +692,14 @@ ila_1 inst_ila (
 		drop_pkts,
 		pass_pkts,
 		all_pkts,
-		inbound_pkts[28:0],
-		outbound_pkts[28:0],
+		inbound_pkts[27:0],
+		outbound_pkts[24:0],
 		save_axis_tready,
 		load_pkt_next,
 		filter_pkt_next,
 		s0_ready,
+		filter_mode,
+		in_flag,
 		in_valid,
 		out_valid
 	})/* verilator lint_on WIDTH */ 
