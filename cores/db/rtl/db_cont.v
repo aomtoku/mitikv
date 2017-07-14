@@ -686,7 +686,7 @@ sume_ddr_mig u_sume_ddr_mig (
        .sys_rst                        (!sys_rst)
 );
 
-`ifndef SIMULATION_DEBUG
+`ifdef SIMULATION_DEBUG
 ila_1 inst_ila (
 	.clk     (ui_mig_clk), // input wire clk
 	/* verilator lint_off WIDTH */
@@ -701,31 +701,29 @@ ila_1 inst_ila (
 		full_wrfifo
 	})/* verilator lint_on WIDTH */ 
 );
-`endif
-`ifdef DEBUG_ILA
 ila_0 u_ila (
 	.clk     (clk156), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
 		//126'd0       ,
-		//in_hash      ,
-		//in_key       ,
-		//in_value     ,
+		in_hash      , // 32
+		in_key       , // 96
+		//in_value     , // 
 		in_valid     ,// 1
 		in_op        ,// 4
 	    out_valid    ,// 1
-	    out_flag     ,// 4
-	    out_value    ,//32
-		state        ,// 2
-		fetched_key  ,//96
-		dpram_in_key ,//96
-		dpram_out_key,//96
-		fetched_flag ,// 4
-		fetched_val  ,//32
-		hash          //32
+	    out_flag     , 22'd0// 4
+	    //out_value    ,//32
+		//state        ,// 2
+		//fetched_key  ,//96
+		//dpram_in_key ,//96
+		//dpram_out_key,//96
+		//fetched_flag ,// 4
+		//fetched_val  ,//32
+		//hash          //32
 	})
 	/* verilator lint_on WIDTH */
 );
-`endif /* DEBUG_ILA */
+`endif
 
 endmodule

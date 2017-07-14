@@ -637,6 +637,7 @@ axis_data_fifo_0 u_axis_data_fifo2 (
 /*
  *  Statistics
  */
+`ifdef DEBUG
 reg [31:0] drop_pkts;
 reg [31:0] pass_pkts;
 reg [31:0] all_pkts;
@@ -666,6 +667,49 @@ always @ (posedge clk156) begin
 end
 
 
+reg [31:0] max_inbound_fifo, inbound_fifo_buf;
+reg [31:0] max_outbound_fifo, outbound_fifo_buf;
+reg [31:0] max_s0_fifo, s0_fifo_buf;
+reg [31:0] max_s1_fifo, s1_fifo_buf;
+reg [31:0] max_s2_fifo, s2_fifo_buf;
+
+always @ (posedge clk156) begin
+	if (eth_rst) begin
+		max_inbound_fifo  <= 0;
+		inbound_fifo_buf  <= 0;
+		max_outbound_fifo <= 0;
+		outbound_fifo_buf <= 0;
+		max_s0_fifo       <= 0; 
+		s0_fifo_buf       <= 0;
+		max_s1_fifo       <= 0; 
+		s1_fifo_buf       <= 0;
+		max_s2_fifo       <= 0; 
+		s2_fifo_buf       <= 0;
+	end else begin
+		inbound_fifo_buf <= inbound_rd_dcnt;
+		if (max_inbound_fifo <= inbound_fifo_buf)
+			max_inbound_fifo <= inbound_fifo_buf;
+
+		outbound_fifo_buf <= outbound_rd_dcnt;
+		if (max_outbound_fifo <= outbound_fifo_buf)
+			max_outbound_fifo <= outbound_fifo_buf;
+		
+		s0_fifo_buf <= inter_s0_dcnt;
+		if (max_s0_fifo <= s0_fifo_buf)
+			max_s0_fifo <= s0_fifo_buf;
+
+		s1_fifo_buf <= inter_s1_dcnt;
+		if (max_s1_fifo <= s1_fifo_buf)
+			max_s1_fifo <= s1_fifo_buf;
+
+		s2_fifo_buf <= inter_s2_dcnt;
+		if (max_s2_fifo <= s2_fifo_buf)
+			max_s2_fifo <= s2_fifo_buf;
+	end
+end
+
+
+
 ///*
 // * Errors related to FIFO full
 // */
@@ -677,11 +721,15 @@ end
 //
 //	end
 //end
-`ifndef DEBUG
-ila_1 inst_ila (
+ila_2 inst_ila (
 	.clk     (clk156), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({
+		max_inbound_fifo,
+		max_outbound_fifo,
+		max_s0_fifo, 
+		max_s1_fifo, 
+		max_s2_fifo, 
 		inbound_rd_dcnt, 
 		inbound_wr_dcnt,
 		outbound_rd_dcnt, 
@@ -692,8 +740,8 @@ ila_1 inst_ila (
 		drop_pkts,
 		pass_pkts,
 		all_pkts,
-		inbound_pkts[27:0],
-		outbound_pkts[24:0],
+		inbound_pkts,
+		outbound_pkts,
 		save_axis_tready,
 		load_pkt_next,
 		filter_pkt_next,
