@@ -97,6 +97,9 @@ vlog ../ip_catalog/asfifo_608_64/sim/asfifo_608_64.v
 #vlog ../../../cores/asfifo/rtl/asfifo.v
 #vlog ../../../cores/asfifo/rtl/graycounter.v
 
+vlog ../rtl/fallthrough_small_fifo.v
+vlog ../rtl/small_fifo.v
+
 
 # IP Netlist for Simulation
 vlog axi_10g_ethernet_0_sim_netlist.v
@@ -116,7 +119,7 @@ vlog ../../../cores/db/rtl/crc32.v
 #Compile files in sim folder (excluding model parameter file)#
 vlog +define+SIMULATION_DEBUG +define+DRAM_SUPPORT ../rtl/top.v 
 vlog +define+SIMULATION_DEBUG ../rtl/eth_top.v
-vlog +define+DEBUG ../rtl/eth_encap.v
+vlog +define+SIMULATION_DEBUG ../rtl/eth_encap.v
 vlog ../rtl/eth_mac_conf.v
 vlog ../rtl/pcs_pma_conf.v
 vlog ../rtl/prbs.v

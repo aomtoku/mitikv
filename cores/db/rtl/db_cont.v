@@ -118,8 +118,7 @@ begin
 	if (in == "8")
 		STR_TO_INT = 8;
 	else if (in == "4")
-		STR_TO_INT = 4;
-	else
+		STR_TO_INT = 4; else
 		STR_TO_INT = 0;
 end
 endfunction
@@ -355,8 +354,8 @@ wire [2:0]   wr_fifo_cmd  = MIG_CMD_WRITE ;
 wire [2:0]   rd_fifo_cmd  = MIG_CMD_READ  ;
 // Todo : address will be 6'b00000 as lower bits.
 //        to lookup 4 entries.
-wire [29:0]  wr_fifo_addr = {dout_wrfifo[31:7], 5'h00};
-wire [29:0]  rd_fifo_addr = {dout_rdfifo[31:7], 5'h00};
+wire [29:0]  wr_fifo_addr = {dout_wrfifo[31:8], 6'h00};
+wire [29:0]  rd_fifo_addr = {dout_rdfifo[31:8], 6'h00};
 
 wire [63:0]  wrfifo_strb  = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data  = dout_wrfifo[607:96];
@@ -400,10 +399,10 @@ wire [511:0] rand_wrdata =
            (rand_reg0 == 1) ? {256'h0, in_key, in_value, 128'h0} :
            (rand_reg0 == 2) ? {128'h0, in_key, in_value, 256'h0} :
            (rand_reg0 == 3) ? {in_key, in_value, 384'h0}         : 0;
-wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'h0000_0000_0000_ffff :
-                          (rand_reg0 == 1) ? 64'h0000_0000_ffff_0000 :
-                          (rand_reg0 == 2) ? 64'h0000_ffff_0000_0000 :
-                          (rand_reg0 == 3) ? 64'hffff_0000_0000_0000 : 0;
+wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'hffff_ffff_ffff_0000 :
+                          (rand_reg0 == 1) ? 64'hffff_ffff_0000_ffff :
+                          (rand_reg0 == 2) ? 64'hffff_0000_ffff_ffff :
+                          (rand_reg0 == 3) ? 64'h0000_ffff_ffff_ffff : 0;
 
 //reg [3:0] rand_reg;
 //
@@ -448,7 +447,8 @@ assign app_en       = fifo_valid;
 assign app_wdf_data = wrfifo_data;
 assign app_wdf_wren = arb_switch == ARB_WR;
 assign app_wdf_end  = 1;
-assign app_wdf_mask = 0; // TODO
+//assign app_wdf_mask = 0; // TODO
+assign app_wdf_mask = wrfifo_strb; // TODO
 
 // To support 1024bit data width of MIG,
 // you need to setup 4-7 regiseters.
@@ -456,8 +456,9 @@ assign app_wdf_mask = 0; // TODO
 // ----------------------------------------------------
 //   Lookup Logic
 // ---------------------------------------------------
-(* dont_touch = "true" *) reg  [511:0] rd_data_buf0, rd_data_buf1, rd_data_buf2;
-(* dont_touch = "true" *) reg  [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3;
+(* dont_touch = "true" *) reg [511:0] rd_data_buf0, rd_data_buf1, rd_data_buf2;
+(* dont_touch = "true" *) reg [ 95:0] key_reg0, key_reg1, key_reg2, key_reg3;
+(* dont_touch = "true" *) reg [29:0] hash_reg;
 //(* dont_touch = "true" *) reg  [ 95:0] key_reg4, key_reg5, key_reg6, key_reg7;
 (* keep = "true" *) wire [127:0] slot0, slot1, slot2, slot3;
 //(* keep = "true" *) wire [127:0] slot4, slot5, slot6, slot7;
@@ -491,10 +492,10 @@ wire insert3 = (table_hit_reg0) ? key_lookup_reg3 :
 
 (* dont_touch = "true" *) reg  [63:0] update_strb_reg;
 (* keep = "true" *) wire [63:0] update_strb = 
-                          (key_lookup_reg0) ? 64'h0000_0000_0000_ffff :
-                          (key_lookup_reg1) ? 64'h0000_0000_ffff_0000 :
-                          (key_lookup_reg2) ? 64'h0000_ffff_0000_0000 :
-                          (key_lookup_reg3) ? 64'hffff_0000_0000_0000 : 64'h0;
+                          (key_lookup_reg0) ? 64'hffff_ffff_ffff_0000 :
+                          (key_lookup_reg1) ? 64'hffff_ffff_0000_ffff :
+                          (key_lookup_reg2) ? 64'hffff_0000_ffff_ffff :
+                          (key_lookup_reg3) ? 64'h0000_ffff_ffff_ffff : 64'hffff_ffff_ffff_ffff;
 
 
 assign wr_data_pre = 
@@ -511,10 +512,9 @@ assign slot1 = rd_data_buf0[255:128];
 assign slot2 = rd_data_buf0[383:256];
 assign slot3 = rd_data_buf0[511:384];
 
-//always @ (posedge clk156)
 always @ (posedge ui_mig_clk)
-	//if (rst) begin
 	if (ui_mig_rst) begin
+		hash_reg <= 0; 
 		rd_data_buf0 <= 0;
 		rd_data_buf1 <= 0;
 		rd_data_buf2 <= 0;
@@ -551,6 +551,7 @@ always @ (posedge ui_mig_clk)
 				key_reg1    <= dout_savefifo[127:32];
 				key_reg2    <= dout_savefifo[127:32];
 				key_reg3    <= dout_savefifo[127:32];
+				hash_reg    <= dout_savefifo[31:2];
 				stage_data_0 <= dout_savefifo;
 				stage_valid_0 <= 1'b1;
 			end else begin
@@ -583,7 +584,7 @@ assign rd_en_upfifo   = ~empty_upfifo & ~in_valid[0];
 assign wr_en_wrfifo   = (in_valid[1] & in_op[0] == SET_REQ) || rd_en_upfifo;
 assign wr_en_rdfifo   = in_valid[2] & in_op[0] == GET_REQ;
 assign wr_en_savefifo = in_valid[3] & in_op[0] == GET_REQ;
-assign wr_en_upfifo   = stage_valid_2 & table_hit_reg1;
+assign wr_en_upfifo   = 0;//stage_valid_2 & table_hit_reg1; // Todo
 
 assign din_rdfifo     = {in_hash[29:0], 2'b11};
 assign din_wrfifo     =  (in_valid[4] & in_op[0] == SET_REQ) ?  
@@ -686,7 +687,7 @@ sume_ddr_mig u_sume_ddr_mig (
        .sys_rst                        (!sys_rst)
 );
 
-`ifdef SIMULATION_DEBUG
+`ifndef SIMULATION_DEBUG
 ila_1 inst_ila (
 	.clk     (ui_mig_clk), // input wire clk
 	/* verilator lint_off WIDTH */
@@ -701,29 +702,48 @@ ila_1 inst_ila (
 		full_wrfifo
 	})/* verilator lint_on WIDTH */ 
 );
-ila_0 u_ila (
-	.clk     (clk156), // input wire clk
+
+reg [95:0] ila_slot0, ila_slot1, ila_slot2, ila_slot3; 
+reg ila_key_lookup0, ila_key_lookup1, ila_key_lookup2, ila_key_lookup3;
+reg [95:0] ila_key_reg0;
+reg [23:0] ila_hash;
+reg [5:0] ila_ref;
+always @ (posedge ui_mig_clk) begin
+	ila_ref <= hash_reg[5:0];
+	ila_hash <= hash_reg[29:6];
+	ila_slot0 <= slot0[127:32];
+	ila_slot1 <= slot1[127:32];
+	ila_slot2 <= slot2[127:32];
+	ila_slot3 <= slot3[127:32];
+	ila_key_lookup0 <= key_lookup0;
+	ila_key_lookup1 <= key_lookup1;
+	ila_key_lookup2 <= key_lookup2;
+	ila_key_lookup3 <= key_lookup3;
+	ila_key_reg0 <= key_reg0;
+end
+
+
+
+ila_2 u_ila2 (
+	.clk     (ui_mig_clk), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({ // 256pin
-		//126'd0       ,
-		in_hash      , // 32
-		in_key       , // 96
-		//in_value     , // 
-		in_valid     ,// 1
-		in_op        ,// 4
-	    out_valid    ,// 1
-	    out_flag     , 22'd0// 4
-	    //out_value    ,//32
-		//state        ,// 2
-		//fetched_key  ,//96
-		//dpram_in_key ,//96
-		//dpram_out_key,//96
-		//fetched_flag ,// 4
-		//fetched_val  ,//32
-		//hash          //32
+		in_hash,
+		in_key[79:72],
+		ila_ref,
+		ila_hash,
+		ila_slot0, 
+        ila_slot1, 
+        ila_slot2, 
+        ila_slot3, 
+		ila_key_lookup0,
+		ila_key_lookup1,
+		ila_key_lookup2,
+		ila_key_lookup3,
+		ila_key_reg0
 	})
-	/* verilator lint_on WIDTH */
-);
+);    
 `endif
+
 
 endmodule

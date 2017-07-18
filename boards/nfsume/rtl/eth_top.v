@@ -44,6 +44,7 @@ module eth_top #(
 	output wire [KEY_SIZE-1:0] in_key,
 	output wire [3:0]          in_flag,
 	output wire                in_valid,
+	input  wire                in_ready,
 	input  wire                out_valid,
 	input  wire [3:0]          out_flag
 );
@@ -149,6 +150,7 @@ eth_encap #(
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
 	.in_valid         (in_valid ),
+	.in_ready         (in_ready),
 	.out_valid        (out_valid),
 	.out_flag         (out_flag ),
 	// Port0 

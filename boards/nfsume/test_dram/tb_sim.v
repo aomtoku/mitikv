@@ -3,6 +3,7 @@
 module tb_sim ();
 
 localparam FREQ = 5000;
+localparam FIFO_DEPTH = 32768;
 
 parameter SIMULATION            = "TRUE";
 parameter PORT_MODE             = "BI_MODE";
@@ -554,6 +555,49 @@ begin
 end
 endtask
 
+// 1024B
+task h0_attack_to_mitikv_type2;
+integer i;
+begin
+	// First flit
+	h0_s_axis_tx_tvalid = 1'b1;
+	h0_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
+	h0_s_axis_tx_tkeep  = 8'hff;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h11400040_4adc5200;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'ha8c0640a_a8c01fb1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h44333412_3930650a;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'hccbbaa99_88776655;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h55443322_11ffeedd;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00ccbbaa_99887766;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h8899aabb_ccddeeff;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h20112233_44556677;
+	waitethclk(1);
+	for (i = 0; i < 117; i = i + 1) begin
+		h0_s_axis_tx_tdata  = 64'h40302011_60504030;
+		waitethclk(1);
+	end
+	h0_s_axis_tx_tkeep  = 8'b1111_1111;
+	h0_s_axis_tx_tdata  = 64'h60504030_20116050;
+	h0_s_axis_tx_tlast  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tvalid = 1'b0;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b0;
+	h0_s_axis_tx_tkeep  = 8'h00;
+end
+endtask
 // TCP
 // 00 45 00 08 e0 fe 95 2b   d0 74 01 f0 9f 0c 00 00
 // 3a d8 76 61 e8 80 bb 05   06 40 00 40 4d a8 34 00
@@ -684,6 +728,42 @@ begin
 end
 endtask
 
+task n_attack;
+input integer num;
+integer i;
+begin
+	for (i=0; i<num; i=i+1) begin 
+		h0_attack_to_mitikv_type1;
+		waitethclk(1);
+	end
+end
+endtask
+
+task n_attack_2;
+input integer num;
+integer i;
+begin
+	for (i=0; i<num; i=i+1) begin 
+		h0_attack_to_mitikv_type2;
+		waitethclk(1);
+	end
+end
+endtask
+
+task show_stats;
+begin
+	$write("%c[1;34m",27); 
+	$display("Clk[%8d]\tresult  inbound %d, outbound %d", sys_cnt, 
+		u_top.u_eth_top.u_eth_encap.inbound_pkts, 
+		u_top.u_eth_top.u_eth_encap.outbound_pkts);
+	$display("Clk[%8d]\tresult  all pkts %d, pass pkts %d, discarded pkts %d", 
+		sys_cnt, 
+		u_top.u_eth_top.u_eth_encap.all_pkts, 
+		u_top.u_eth_top.u_eth_encap.pass_pkts, 
+		u_top.u_eth_top.u_eth_encap.drop_pkts);
+	$write("%c[0m",27); 
+end
+endtask
 
 //*******************************************************************
 // Monitoring mitiKV behavior
@@ -740,6 +820,20 @@ always @ (posedge u_top.u_eth_top.clk156)
 		$write("%c[0m",27); 
 	end
 
+always @ (posedge u_top.u_eth_top.clk156) begin
+	if (u_top.u_eth_top.u_eth_encap.inbound_rd_dcnt >= FIFO_DEPTH+2) begin
+		$write("%c[1;31m",27); 
+		$display("Clk[%8d]\t FIFO full inbound_rd (%d)", 
+			sys_cnt, u_top.u_eth_top.u_eth_encap.inbound_rd_dcnt); 
+		$write("%c[0m",27); 
+	end
+	if (u_top.u_eth_top.u_eth_encap.inbound_wr_dcnt >= FIFO_DEPTH+2) begin
+		$write("%c[1;31m",27); 
+		$display("Clk[%8d]\t FIFO full inbound_wr (%d)", 
+			sys_cnt, u_top.u_eth_top.u_eth_encap.inbound_wr_dcnt); 
+		$write("%c[0m",27); 
+	end
+end
 //always @ (posedge u_top.u_eth_top.clk156) 
 //	if (u_top.u_eth_top.u_eth_encap.filter_block) begin
 //		$write("%c[1;34m",27); 
@@ -932,9 +1026,13 @@ initial begin
 	h0_attack_to_mitikv_type1;
 	waitethclk(50);
 
+	n_attack_2(50000);
+
+	waitethclk(200);
+
 	$display("================================================");
 	$display("Simulation finishes.");
-
+	show_stats;
 
 
 	$finish;

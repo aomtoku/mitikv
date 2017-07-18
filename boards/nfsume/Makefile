@@ -43,7 +43,9 @@ IP_SRC := ip_catalog/axi_10g_ethernet_0/axi_10g_ethernet_0.xci  \
           ip_catalog/asfifo_160_64/asfifo_160_64.xci \
           ip_catalog/asfifo_32_64/asfifo_32_64.xci   \
           ip_catalog/asfifo_608_64/asfifo_608_64.xci \
-          ip_catalog/ila_1/ila_1.xci \
+		 ip_catalog/ila_0/ila_0.xci \
+		 ip_catalog/ila_1/ila_1.xci \
+		 ip_catalog/ila_2/ila_2.xci \
           ip_catalog/si5324_regs_rom/si5324_regs_rom.xcix
 
 #ip_catalog/sume_ddr_mig/sume_ddr_mig.xci      
@@ -105,7 +107,7 @@ load: $(outdir)/$(proj).bit
 synth-clean:
 	rm -f fsm_encoding.os usage_stat*
 	rm -rf build .Xil
-	rm -rf *.jou *.log *.mif *.hw  *.ip_user_files *.cache  *.sim *.runs *.srcs
+	rm -rf *.jou *.log *.mif *.hw  *.ip_user_files *.cache  *.sim *.runs *.srcs .srcs
 
 sim-clean:
 	rm -f wave.vcd

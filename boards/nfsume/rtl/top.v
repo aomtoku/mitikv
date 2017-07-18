@@ -164,6 +164,7 @@ localparam KEY_SIZE = 96;
 wire [KEY_SIZE-1:0] in_key;
 wire [3:0]          in_flag, out_flag;
 wire                in_valid, out_valid;
+wire                in_ready;
 wire                db_clk;
 eth_top #(
 	.KEY_SIZE           (96),
@@ -179,6 +180,7 @@ eth_top #(
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
 	.in_valid         (in_valid ),
+	.in_ready         (in_ready), 
 	.out_valid        (out_valid),
 	.out_flag         (out_flag ),
 
@@ -249,6 +251,7 @@ db_top #(
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
 	.in_valid         (in_valid ),
+	.in_ready         (in_ready ),
 	.out_valid        (out_valid),
 	.out_flag         (out_flag )
 
