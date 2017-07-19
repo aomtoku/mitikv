@@ -79,6 +79,7 @@ module db_cont #(
 	output [ 0:0]  ddr3_odt,
 `endif /* DRAM_SUPPORT */
 	/* Network Interface side */
+	output reg                   init_mem     ,
 	input  wire [4:0]            in_valid     ,
 	input  wire [3:0]            in_op        ,
 	input  wire [HASH_SIZE-1:0]  in_hash      ,
@@ -447,6 +448,7 @@ prbs #(
 );
 // ----------------------------------------------------
 //   MIG User Interface assignment
+//       Todo : memory initialize (write zero all memory)
 // ---------------------------------------------------
 assign app_addr     = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr;
 assign app_cmd      = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd;
@@ -456,6 +458,11 @@ assign app_wdf_wren = arb_switch == ARB_WR;
 assign app_wdf_end  = 1;
 //assign app_wdf_mask = 0; // TODO
 assign app_wdf_mask = wrfifo_strb; // TODO
+
+always @ (posedge ui_mig_clk) begin
+	init_mem <= init_calib_complete;
+end
+
 
 // To support 1024bit data width of MIG,
 // you need to setup 4-7 regiseters.

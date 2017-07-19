@@ -40,6 +40,7 @@ module eth_top #(
 	output wire [7:0]         eth_rst,
 	output wire [7:0]          debug,
 
+	input  wire                init_mem,
 	output wire                db_clk,
 	output wire [KEY_SIZE-1:0] in_key,
 	output wire [3:0]          in_flag,
@@ -77,9 +78,9 @@ assign eth_rst   = eth_rst_reg[7:0];
 assign eth_rst_b = eth_rst_reg[23:8];
 always @(posedge clk156) 
 `ifndef SIMULATION_DEBUG
-	if (cold_counter != 14'h3fff) begin
+	if (init_mem && cold_counter != 14'h3fff) begin
 `else
-	if (cold_counter != 14'h9) begin
+	if (init_mem && cold_counter != 14'h9) begin
 `endif /* SIMULATION_DEBUG */
 		cold_counter <= cold_counter + 14'd1;
 		eth_rst_reg  <= 24'hffffff;
@@ -147,6 +148,7 @@ eth_encap #(
 	.eth_rst          (eth_rst_b[15:0]),
 	.debug            (eth_debug),
 
+	.init_mem         (init_mem ),
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
 	.in_valid         (in_valid ),

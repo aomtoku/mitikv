@@ -176,6 +176,7 @@ eth_top #(
 	.debug              (LED),
 	
 	/* KVS Interface */
+	.init_mem         (init_mem),
 	.db_clk           (db_clk),
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
@@ -248,6 +249,7 @@ db_top #(
 	.ddr3_odt         (ddr3_odt),
 `endif /* DRAM_SUPPORT */
 	/* Network Interface */
+	.init_mem         (init_mem),
 	.in_key           (in_key   ),
 	.in_flag          (in_flag  ),
 	.in_valid         (in_valid ),

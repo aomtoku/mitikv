@@ -32,6 +32,7 @@ module db_top #(
 	output [ 0:0]              ddr3_odt,
 `endif /* DRAM_SUPPORT */
 	/* Network Interface */
+	output wire                init_mem,
 	input  wire [KEY_SIZE-1:0] in_key,
 	input  wire [3:0]          in_flag,
 	input  wire                in_valid,
@@ -156,6 +157,7 @@ db_cont #(
 	.ddr3_odt        (ddr3_odt),
 `endif 
 	/* Network Interface side */
+	.init_mem     (init_mem),
 	.in_valid     (valid_buf),
 	.in_op        (flag_reg),
 	.in_hash      (hash_value),
