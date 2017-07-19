@@ -450,17 +450,53 @@ prbs #(
 //   MIG User Interface assignment
 //       Todo : memory initialize (write zero all memory)
 // ---------------------------------------------------
-assign app_addr     = (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr;
-assign app_cmd      = (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd;
-assign app_en       = fifo_valid;
-assign app_wdf_data = wrfifo_data;
-assign app_wdf_wren = arb_switch == ARB_WR;
-assign app_wdf_end  = 1;
-//assign app_wdf_mask = 0; // TODO
-assign app_wdf_mask = wrfifo_strb; // TODO
+localparam MEM_INIT = 0;
+localparam MEM_IDLE = 1;
+reg state;
+reg [23:0] init_addr;
+wire init_en = app_rdy && app_wdf_rdy;
 
 always @ (posedge ui_mig_clk) begin
+	if (ui_mig_rst) begin
+`ifdef SIM_MEM_INIT
+		state     <= MEM_IDLE;
+`else
+		state     <= MEM_INIT;
+`endif /* SIM_MEM_INIT */
+		init_addr <= 24'h0;
+	end else begin
+		if (init_calib_complete) begin
+			case (state)
+				MEM_INIT :
+					if (init_en) begin
+						if (init_addr == 24'hff_ffff)
+							state <= MEM_IDLE;
+						else
+							init_addr <= init_addr + 1;
+					end
+				MEM_IDLE : state  <= MEM_IDLE;
+			endcase
+		end
+	end
+end
+
+assign app_addr     = (state == MEM_INIT) ? {init_addr, 6'h0} :
+                      (arb_switch == ARB_RD) ? rd_fifo_addr : wr_fifo_addr;
+assign app_cmd      = (state == MEM_INIT) ? MIG_CMD_WRITE :
+                      (arb_switch == ARB_RD) ? rd_fifo_cmd  : wr_fifo_cmd;
+assign app_en       = (state == MEM_INIT) ? init_en : fifo_valid;
+assign app_wdf_data = (state == MEM_INIT) ? 512'h0  : wrfifo_data;
+assign app_wdf_wren = (state == MEM_INIT) ? init_en : arb_switch == ARB_WR;
+assign app_wdf_end  = 1;
+//assign app_wdf_mask = 0; // TODO
+assign app_wdf_mask = (state == MEM_INIT) ? 64'h00000000_00000000 : wrfifo_strb; // TODO
+
+always @ (posedge ui_mig_clk) begin
+`ifdef SIM_MEM_INIT
 	init_mem <= init_calib_complete;
+`else
+	init_mem <= state;
+`endif /* SIM_MEM_INIT */
 end
 
 
