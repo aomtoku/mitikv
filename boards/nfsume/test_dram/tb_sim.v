@@ -598,6 +598,58 @@ begin
 	h0_s_axis_tx_tkeep  = 8'h00;
 end
 endtask
+
+task h0_attack_to_mitikv_from;
+input [95:0] key;
+reg [31:0] src_ip;
+reg [31:0] dst_ip;
+reg [15:0] src_uport;
+reg [15:0] dst_uport;
+begin
+	src_ip = {key[71:64], key[79:72], key[87:80], key[95:88]};
+	dst_ip = {key[39:32], key[47:40], key[55:48], key[63:56]};
+	src_uport = {key[7:0], key[15:8]};
+    dst_uport = {key[23:16], key[31:24]};
+	// First flit
+	h0_s_axis_tx_tvalid = 1'b1;
+	h0_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
+	h0_s_axis_tx_tkeep  = 8'hff;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h11400040_4adc5200;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = {dst_ip[15:0], src_ip, 16'h1fb1};
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = {16'h4433, dst_uport, src_uport, dst_ip[31:16]};
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'hccbbaa99_88776655;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h55443322_11ffeedd;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h00ccbbaa_99887766;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h8899aabb_ccddeeff;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h20112233_44556677;
+	waitethclk(1);
+	h0_s_axis_tx_tdata  = 64'h40302011_60504030;
+	waitethclk(1);
+	h0_s_axis_tx_tkeep  = 8'b1111_1111;
+	h0_s_axis_tx_tdata  = 64'h60504030_20116050;
+	h0_s_axis_tx_tlast  = 1'b1;
+	waitethclk(1);
+	h0_s_axis_tx_tvalid = 1'b0;
+	h0_s_axis_tx_tlast  = 1'b0;
+	h0_s_axis_tx_tuser  = 1'b0;
+	h0_s_axis_tx_tkeep  = 8'h00;
+end
+endtask
+
+
+
 // TCP
 // 00 45 00 08 e0 fe 95 2b   d0 74 01 f0 9f 0c 00 00
 // 3a d8 76 61 e8 80 bb 05   06 40 00 40 4d a8 34 00
@@ -711,6 +763,65 @@ begin
 	h1_s_axis_tx_tkeep  = 8'h00;
 end
 endtask
+
+
+task h1_icmp_to_mitikv_from;
+input [95:0] key;
+reg [31:0] src_ip;
+reg [31:0] dst_ip;
+reg [15:0] src_uport;
+reg [15:0] dst_uport;
+begin
+	src_ip = {key[71:64], key[79:72], key[87:80], key[95:88]};
+	dst_ip = {key[39:32], key[47:40], key[55:48], key[63:56]};
+	src_uport = {key[7:0], key[15:8]};
+    dst_uport = {key[23:16], key[31:24]};
+	// First flit
+	h1_s_axis_tx_tvalid = 1'b1;
+	h1_s_axis_tx_tdata  = 64'hd07401f0_9f0c0000;
+	h1_s_axis_tx_tkeep  = 8'hff;
+	h1_s_axis_tx_tlast  = 1'b0;
+	h1_s_axis_tx_tuser  = 1'b1;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h00450008_e0fe952b;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h01400040_969e6e00;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'ha8c07661_e880c7ee;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h0101f9fa_03032a0a;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h44332211_00000201;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = {src_ip[15:0],48'haa99_88776655};
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = {src_uport, dst_ip, src_ip[31:16]};
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = {48'h88776655_4433, dst_uport};
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h11ffeedd_ccbbaa99;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h99887766_55443322;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'hccddeeff_00ccbbaa;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h44556677_8899aabb;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h60504030_20112233;
+	waitethclk(1);
+	h1_s_axis_tx_tdata  = 64'h20116050_40302011;
+	waitethclk(1);
+	h1_s_axis_tx_tkeep  = 8'b0000_1111;
+	h1_s_axis_tx_tdata  = 64'h00000000_60504030;
+	h1_s_axis_tx_tlast  = 1'b1;
+	waitethclk(1);
+	h1_s_axis_tx_tvalid = 1'b0;
+	h1_s_axis_tx_tlast  = 1'b0;
+	h1_s_axis_tx_tuser  = 1'b0;
+	h1_s_axis_tx_tkeep  = 8'h00;
+end
+endtask
+
 
 task reset_axis_bus;
 begin
@@ -876,22 +987,35 @@ wire [95:0] slot0 = u_top.u_db_top.u_db_cont.slot0[127:32];
 wire [95:0] slot1 = u_top.u_db_top.u_db_cont.slot1[127:32];
 wire [95:0] slot2 = u_top.u_db_top.u_db_cont.slot2[127:32];
 wire [95:0] slot3 = u_top.u_db_top.u_db_cont.slot3[127:32];
+wire [95:0] ref   = u_top.u_db_top.u_db_cont.key_reg0;
 
 always @ (posedge u_top.u_db_top.u_db_cont.ui_mig_clk)
 	if (u_top.u_db_top.u_db_cont.stage_valid_0) begin
 		$write("%c[1;34m",27); 
 		$display("Clk[%8d]\t Lookup : %s", sys_cnt,
-			u_top.u_db_top.u_db_cont.table_hit ? "HIT" : "MISS");
-		if (u_top.u_db_top.u_db_cont.table_hit) begin
-			if (u_top.u_db_top.u_db_cont.key_lookup0)
-				$display("\t\tSlot 0");
-			if (u_top.u_db_top.u_db_cont.key_lookup1)
-				$display("\t\tSlot 1");
-			if (u_top.u_db_top.u_db_cont.key_lookup2)
-				$display("\t\tSlot 2");
-			if (u_top.u_db_top.u_db_cont.key_lookup3)
-				$display("\t\tSlot 3");
-		end
+			(u_top.u_db_top.u_db_cont.table_hit && 
+				u_top.u_db_top.u_db_cont.key_lookup0) ? "HIT (Slot0)" : 
+			(u_top.u_db_top.u_db_cont.table_hit && 
+				u_top.u_db_top.u_db_cont.key_lookup1) ? "HIT (Slot1)" : 
+			(u_top.u_db_top.u_db_cont.table_hit && 
+				u_top.u_db_top.u_db_cont.key_lookup2) ? "HIT (Slot2)" : 
+			(u_top.u_db_top.u_db_cont.table_hit && 
+				u_top.u_db_top.u_db_cont.key_lookup3) ? "HIT (Slot3)" : 
+				"MISS");
+		//if (u_top.u_db_top.u_db_cont.table_hit) begin
+		//	if (u_top.u_db_top.u_db_cont.key_lookup0)
+		//		$display("\t\tSlot 0");
+		//	if (u_top.u_db_top.u_db_cont.key_lookup1)
+		//		$display("\t\tSlot 1");
+		//	if (u_top.u_db_top.u_db_cont.key_lookup2)
+		//		$display("\t\tSlot 2");
+		//	if (u_top.u_db_top.u_db_cont.key_lookup3)
+		//		$display("\t\tSlot 3");
+		//end
+		$display("\t\tReference key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
+			ref[95:88], ref[87:80], ref[79:72], ref[71:64],
+			ref[63:56], ref[55:48], ref[47:40], ref[39:32],
+			ref[31:16], ref[15: 0]);
 		$display("\t\tSlot0 key  : %d.%d.%d.%d %d.%d.%d.%d %d %d",  
 			slot0[95:88], slot0[87:80], slot0[79:72], slot0[71:64],
 			slot0[63:56], slot0[55:48], slot0[47:40], slot0[39:32],
@@ -945,6 +1069,10 @@ always @ (posedge u_top.u_db_top.u_db_cont.ui_mig_clk) begin
 		$write("%c[1;34m",27); 
 		$display("Clk[%8d]\tWrite Data:%64x", sys_cnt, 
 			u_top.u_db_top.u_db_cont.app_wdf_data);
+		$display("\t\tData Mask :%8x", 
+			u_top.u_db_top.u_db_cont.app_wdf_mask);
+		$display("\t\tWrite Addr :%8x", 
+			u_top.u_db_top.u_db_cont.app_addr);
 		$write("%c[0m",27); 
 	end
 end
@@ -998,7 +1126,8 @@ endgenerate
 /*
  *   scenario
  */ 
-
+integer j;
+reg [15:0] inp;
 initial begin
 	$dumpfile("./test.vcd");
 	$dumpvars(0, tb_sim);
@@ -1019,6 +1148,22 @@ initial begin
 	waitethclk(1);
 	tcp_traffic;
 	waitethclk(40);
+
+	$display("=========     BEGIN  AOM            ===========");
+	for (j = 0; j < 256; j = j + 1) begin
+		inp = j;
+		h1_icmp_to_mitikv_from({8'hc0, inp, 72'h65c0a80a64c3510035});
+		waitethclk(5);
+	end
+
+	waitethclk(20);
+	for (j = 0; j < 256; j = j + 1) begin
+		inp = j;
+		h0_attack_to_mitikv_from({8'hc0, inp, 72'h65c0a80a64c3510035});
+		waitethclk(5);
+	end
+	$display("=========      END   AOM            ===========");
+
 	h1_icmp_to_mitikv;
 	waitethclk(40);
 	h0_attack_to_mitikv_type1;

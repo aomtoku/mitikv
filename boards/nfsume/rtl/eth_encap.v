@@ -12,6 +12,7 @@ module eth_encap #(
 	output wire [KEY_SIZE-1:0] in_key,
 	output wire [3:0]          in_flag,
 	output wire                in_valid,
+	input  wire                in_ready,
 	input  wire                out_valid,
 	input  wire [3:0]          out_flag,
 
@@ -62,7 +63,7 @@ localparam ICMP_DEST_UNREACH = 8'h03;
 localparam ICMP_ADMIN_PROHIB = 8'h0a;
 localparam DNS_SERV_PORT__   = 16'd53;
 localparam DEBUG_SERV_PORT__ = 16'd12345;
-`ifdef DEBUG
+`ifdef SIMULATION_DEBUG
 localparam DNS_SERV_PORT = DEBUG_SERV_PORT__;
 `else
 localparam DNS_SERV_PORT = DNS_SERV_PORT__;
@@ -406,7 +407,7 @@ always @ (posedge clk156) begin
 				end
 				default : ;
 			endcase
-			if (filter_mode && filter_src_udp == DNS_SERV_PORT &&
+			if (filter_mode /*&& filter_src_udp == DNS_SERV_PORT*/ &&
 				rx_cnt1 == 10'd10) begin
 				db_op1 <= 4'b0101;
 				hit_cnt[7] <= 1;
@@ -417,15 +418,15 @@ end
 
 wire [1:0] status = suspect_mode ? db_op0[2:1] : 
                     filter_mode  ? db_op1[2:1] : 2'd0;
-assign in_flag    = suspect_mode ? db_op0 : 
-                    filter_mode  ? db_op1 : 4'd0;
-assign in_valid   = (suspect_mode && rx_cnt0 == 10'd7) || 
-                    (filter_mode  && rx_cnt1 == 10'd11 && 
-                     filter_src_udp == DNS_SERV_PORT);
-
-assign in_key = (suspect_mode) ? {rx0_src_ip, rx0_dst_ip, 
+wire [3:0] in_flag_pre  = (suspect_mode && rx_cnt0 == 10'd7) ? db_op0 : 
+                          (filter_mode && rx_cnt1 == 10'd11) ? db_op1 : 0;
+wire       in_valid_pre = (suspect_mode && rx_cnt0 == 10'd7) || 
+                          (filter_mode  && rx_cnt1 == 10'd11);// && 
+                                 //filter_src_udp == DNS_SERV_PORT);
+        
+wire [95:0] in_key_pre = (suspect_mode && rx_cnt0 == 10'd7) ? {rx0_src_ip, rx0_dst_ip, 
                                   rx0_dst_uport , rx0_src_uport}  :
-                (filter_mode)  ? {filter_src_ip, filter_dst_ip, 
+                (filter_mode && rx_cnt1 == 10'd11)  ? {filter_src_ip, filter_dst_ip, 
                                   filter_dst_udp, filter_src_udp} : 0;
 
 assign debug = hit_cnt;
@@ -457,9 +458,9 @@ reg load_pkt, load_pkt_next;
 reg filter_pkt, filter_pkt_next;
 reg last_reg, valid_reg;
 
-wire empty_valid_fifo, full_valid_fifo;
+wire empty_ovalid_fifo, full_ovalid_fifo;
 wire [3:0] dout_flag;
-wire trig_rd_en = !empty_valid_fifo & !load_pkt;
+wire trig_rd_en = !empty_ovalid_fifo && !load_pkt;
 
 wire check_pkt_en = trig_rd_en;//out_valid ;
 wire check_pkt    = (dout_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
@@ -467,20 +468,39 @@ wire check_pkt    = (dout_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
 
 fallthrough_small_fifo #(
 	.WIDTH           (4),
-	.MAX_DEPTH_BITS  (3)
-) u_valid_fifo (
+	.MAX_DEPTH_BITS  (5)
+) u_ovalid_fifo (
 	.din         (out_flag),     // Data in
 	.wr_en       (out_valid),   // Write enable
 	.rd_en       (trig_rd_en),   // Read the next word
 	.dout        (dout_flag),    // Data out
-	.full        (full_valid_fifo),
-	.empty       (empty_valid_fifo),
+	.full        (full_ovalid_fifo),
+	.empty       (empty_ovalid_fifo),
 	.nearly_full (),
 	.prog_full   (),
 	.reset       (eth_rst[1]),
 	.clk         (clk156)
 );
 
+
+wire empty_ivalid_fifo, full_ivalid_fifo;
+assign in_valid  = !empty_ivalid_fifo && in_ready;
+
+fallthrough_small_fifo #(
+	.WIDTH           (100),
+	.MAX_DEPTH_BITS  (5)
+) u_ivalid_fifo (
+	.din         ({in_flag_pre, in_key_pre}),     // Data in
+	.wr_en       (in_valid_pre),   // Write enable
+	.rd_en       (in_valid),   // Read the next word
+	.dout        ({in_flag, in_key}),    // Data out
+	.full        (full_ivalid_fifo),
+	.empty       (empty_ivalid_fifo),
+	.nearly_full (),
+	.prog_full   (),
+	.reset       (eth_rst[1]),
+	.clk         (clk156)
+);
 always @ (posedge clk156)
 	if (eth_rst[2]) begin
 		last_reg  <= 0;
@@ -637,7 +657,6 @@ axis_data_fifo_0 u_axis_data_fifo2 (
 /*
  *  Statistics
  */
-`ifdef DEBUG
 reg [31:0] drop_pkts;
 reg [31:0] pass_pkts;
 reg [31:0] all_pkts;
@@ -667,6 +686,7 @@ always @ (posedge clk156) begin
 end
 
 
+`ifndef SIMULATION_DEBUG
 reg [31:0] max_inbound_fifo, inbound_fifo_buf;
 reg [31:0] max_outbound_fifo, outbound_fifo_buf;
 reg [31:0] max_s0_fifo, s0_fifo_buf;
@@ -723,7 +743,6 @@ end
 //end
 ila_2 inst_ila (
 	.clk     (clk156), // input wire clk
-	/* verilator lint_off WIDTH */
 	.probe0  ({
 		max_inbound_fifo,
 		max_outbound_fifo,
@@ -745,14 +764,32 @@ ila_2 inst_ila (
 		save_axis_tready,
 		load_pkt_next,
 		filter_pkt_next,
-		s0_ready,
+		in_ready,
 		filter_mode,
 		in_flag,
 		in_valid,
 		out_valid
-	})/* verilator lint_on WIDTH */ 
+	})
+);
+
+ila_2 inst_ila0 (
+	.clk     (clk156), 
+	.probe0  ({
+		in_valid,
+		in_key,
+		in_flag,
+		rx_cnt1,
+		rx_cnt0,
+		suspect_mode,
+		filter_mode,
+		out_valid,
+		out_flag,
+		filter_src_ip, 
+		filter_dst_ip, 
+		filter_dst_udp,
+		filter_src_udp
+	})
 );
 `endif
-
 endmodule
 

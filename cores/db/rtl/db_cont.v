@@ -350,6 +350,8 @@ asfifo_160_64 u_save_fifo (
  *     WR-FIFO or RD-FIFO
  */
 
+reg  [1:0] arb_reg;
+reg  [1:0] arb_switch;
 wire [2:0]   wr_fifo_cmd  = MIG_CMD_WRITE ;
 wire [2:0]   rd_fifo_cmd  = MIG_CMD_READ  ;
 // Todo : address will be 6'b00000 as lower bits.
@@ -359,13 +361,12 @@ wire [29:0]  rd_fifo_addr = {dout_rdfifo[31:8], 6'h00};
 
 wire [63:0]  wrfifo_strb  = dout_wrfifo[95:32];
 wire [511:0] wrfifo_data  = dout_wrfifo[607:96];
-wire         fifo_valid   = ~empty_rdfifo | ~empty_wrfifo;
+wire         fifo_valid   = (~empty_rdfifo && arb_switch == ARB_RD) 
+                              || (~empty_wrfifo && arb_switch == ARB_WR);
 
 // ----------------------------------------------------
 //   Arbitor between RD-FIFO and WR-FIFO on issueing CMD
 // ----------------------------------------------------
-reg  [1:0] arb_reg;
-reg  [1:0] arb_switch;
 
 always @ (posedge ui_mig_clk) 
 	if (ui_mig_rst)
@@ -380,11 +381,11 @@ always @ (posedge ui_mig_clk)
 always @ (*) begin
 	arb_switch = 0;
 
-	if (~empty_rdfifo & ~empty_wrfifo)
+	if (app_rdy && app_wdf_rdy && ~empty_rdfifo && ~empty_wrfifo)
 		arb_switch = arb_reg;
-	else if (app_wdf_rdy && ~empty_wrfifo)
+	else if (app_rdy && app_wdf_rdy && ~empty_wrfifo)
 		arb_switch = ARB_WR;
-	else if (~empty_rdfifo)
+	else if (app_rdy && ~empty_rdfifo)
 		arb_switch = ARB_RD;
 
 end
@@ -394,15 +395,21 @@ end
 // ---------------------------------------------------------------
 reg [1:0] rand_reg0, rand_reg1;
 wire [1:0] rand0, rand1;
-wire [511:0] rand_wrdata = 
-           (rand_reg0 == 0) ? {384'h0, in_key, in_value}         :
-           (rand_reg0 == 1) ? {256'h0, in_key, in_value, 128'h0} :
-           (rand_reg0 == 2) ? {128'h0, in_key, in_value, 256'h0} :
-           (rand_reg0 == 3) ? {in_key, in_value, 384'h0}         : 0;
-wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'hffff_ffff_ffff_0000 :
-                          (rand_reg0 == 1) ? 64'hffff_ffff_0000_ffff :
-                          (rand_reg0 == 2) ? 64'hffff_0000_ffff_ffff :
-                          (rand_reg0 == 3) ? 64'h0000_ffff_ffff_ffff : 0;
+wire [511:0] rand_wrdata = {384'h0, in_key, in_value};
+//wire [511:0] rand_wrdata = 
+//           (rand_reg0 == 0) ? {384'h0, in_key, in_value}         :
+//           (rand_reg0 == 1) ? {256'h0, in_key, in_value, 128'h0} :
+//           (rand_reg0 == 2) ? {128'h0, in_key, in_value, 256'h0} :
+//           (rand_reg0 == 3) ? {in_key, in_value, 384'h0}         : 0;
+//wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'hffff_ffff_ffff_0000 :
+//                          (rand_reg0 == 1) ? 64'hffff_ffff_0000_ffff :
+//                          (rand_reg0 == 2) ? 64'hffff_0000_ffff_ffff :
+//                          (rand_reg0 == 3) ? 64'a0000_ffff_ffff_ffff : 0;
+//wire [63:0] rand_wrstrb = (rand_reg0 == 0) ? 64'h0000_0000_0000_ffff :
+//                          (rand_reg0 == 1) ? 64'h0000_0000_ffff_0000 :
+//                          (rand_reg0 == 2) ? 64'h0000_ffff_0000_0000 :
+//                          (rand_reg0 == 3) ? 64'hffff_0000_0000_0000 : 0;
+wire [63:0] rand_wrstrb = 64'hffff_ffff_ffff_0000 ;
 
 //reg [3:0] rand_reg;
 //
@@ -581,13 +588,13 @@ assign rd_en_rdfifo   = arb_switch == ARB_RD && app_rdy == 1'b1;
 assign rd_en_savefifo = app_rd_data_valid;
 assign rd_en_upfifo   = ~empty_upfifo & ~in_valid[0];
 
-assign wr_en_wrfifo   = (in_valid[1] & in_op[0] == SET_REQ) || rd_en_upfifo;
-assign wr_en_rdfifo   = in_valid[2] & in_op[0] == GET_REQ;
-assign wr_en_savefifo = in_valid[3] & in_op[0] == GET_REQ;
+assign wr_en_wrfifo   = (in_valid[1] && in_op[0] == SET_REQ) || rd_en_upfifo;
+assign wr_en_rdfifo   = in_valid[2] && in_op[0] == GET_REQ;
+assign wr_en_savefifo = in_valid[3] && in_op[0] == GET_REQ;
 assign wr_en_upfifo   = 0;//stage_valid_2 & table_hit_reg1; // Todo
 
 assign din_rdfifo     = {in_hash[29:0], 2'b11};
-assign din_wrfifo     =  (in_valid[4] & in_op[0] == SET_REQ) ?  
+assign din_wrfifo     =  (in_valid[4] && in_op[0] == SET_REQ) ?  
                    {rand_wrdata, rand_wrstrb, in_hash[29:0], 2'b01} : 
                    dout_upfifo[607:96];
 assign din_savefifo   = {in_value, in_key[95:0], in_hash[29:0], 2'b01};
@@ -688,18 +695,50 @@ sume_ddr_mig u_sume_ddr_mig (
 );
 
 `ifndef SIMULATION_DEBUG
+reg [29:0] ila_app_addr;
+reg [2:0] ila_app_cmd;
+reg ila_app_en;
+reg [275:0] ila_app_wdf_data;
+reg ila_app_wdf_end;
+reg ila_app_wdf_wren;
+reg [63:0] ila_app_wdf_mask;
+reg ila_init_calib_complete;
+reg ila_full_flag;
+reg ila_full_savefifo;
+reg ila_full_rdfifo;
+reg ila_full_wrfifo;
+
+always @ (posedge ui_mig_clk) begin
+	ila_app_addr          		<= app_addr;
+	ila_app_cmd            		<= app_cmd;
+	ila_app_en             		<= app_en;
+	ila_app_wdf_data			<= app_wdf_data[275:0];
+	ila_app_wdf_end        		<= app_wdf_end;   
+	ila_app_wdf_wren       		<= app_wdf_wren;  
+	ila_app_wdf_mask            <= app_wdf_mask;
+	ila_init_calib_complete		<= init_calib_complete;
+	ila_full_flag          		<= full_flag; 
+	ila_full_savefifo      		<= full_savefifo;
+	ila_full_rdfifo       		<= full_rdfifo;
+	ila_full_wrfifo        		<= full_wrfifo;
+end
+
 ila_1 inst_ila (
 	.clk     (ui_mig_clk), // input wire clk
 	/* verilator lint_off WIDTH */
 	.probe0  ({
-		app_addr,
-		app_cmd,
-		app_en,
-		init_calib_complete,
-		full_flag, 
-		full_savefifo,
-		full_rdfifo,
-		full_wrfifo
+		ila_app_addr,
+		ila_app_cmd,
+		ila_app_en,
+		ila_app_wdf_data[255:0],
+		ila_app_wdf_end,   
+		ila_app_wdf_wren,  
+		ila_app_wdf_mask,
+		ila_init_calib_complete,
+		ila_full_flag, 
+		ila_full_savefifo,
+		ila_full_rdfifo,
+		ila_full_wrfifo
 	})/* verilator lint_on WIDTH */ 
 );
 
