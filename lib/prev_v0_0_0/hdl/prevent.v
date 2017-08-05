@@ -199,12 +199,30 @@ always @ (posedge axis_aclk) begin
 
 	end
 
-wire empty_ivalid_fifo, full_ivalid_fifo;
+/***************************************************************
+ * Lookup logic
+ ***************************************************************/
+wire [C_S_AXIS_DATA_WIDTH - 1:0]         save_axis_tdata ;
+wire [((C_S_AXIS_DATA_WIDTH / 8)) - 1:0] save_axis_tkeep ;
+wire [C_S_AXIS_TUSER_WIDTH-1:0]          save_axis_tuser ;
+wire                                     save_axis_tvalid;
+wire                                     save_axis_tready;
+reg load_pkt, load_pkt_next;
+reg filter_pkt, filter_pkt_next;
+reg last_reg, valid_reg;
+
 wire [3:0] in_flag_pre = 4'b0000;
+wire [3:0] dout_flag;
+wire       empty_ivalid_fifo, full_ivalid_fifo;
+wire       empty_ovalid_fifo, full_ovalid_fifo;
+wire       trig_rd_en = !empty_ovalid_fifo && !load_pkt;
+
+wire check_pkt_en = trig_rd_en;//out_valid ;
+wire check_pkt    = (dout_flag == 4'b0001) ? CHECK_DROP : CHECK_THROUGH;
 
 fallthrough_small_fifo #(
 	.WIDTH           (100),
-	.MAX_DEPTH_BITS  (5)
+	.MAX_DEPTH_BITS  (3)
 ) u_ivalid_fifo (
 	.din         ( {in_flag_pre, key_input} ),
 	.wr_en       ( {lookup_pkt_en, lookup_pkt_en_buf} == 2'b10 ),
@@ -217,51 +235,143 @@ fallthrough_small_fifo #(
 	.reset       ( axis_resetn       ),
 	.clk         ( axis_aclk         )
 );
+
+allthrough_small_fifo #(
+	.WIDTH           (4),
+	.MAX_DEPTH_BITS  (3)
+) u_ovalid_fifo (
+	.din         ( out_flag          ),
+	.wr_en       ( out_valid         ),
+	.rd_en       ( trig_rd_en        ),
+	.dout        ( dout_flag         ),
+	.full        ( full_ovalid_fifo  ),
+	.empty       ( empty_ovalid_fifo ),
+	.nearly_full (),
+	.prog_full   (),
+	.reset       ( axis_resetn       ),
+	.clk         ( axis_aclk         )
+);
+
+reg valid_udp_traffic;
+wire udp_traffic_en = valid_udp_traffic | 
+                         (p2_status == 2'b11 & p2_s_axis_tvalid);
+
+always @ (*) begin
+	filter_pkt_next = filter_pkt;
+	load_pkt_next = load_pkt;
+
+	if (check_pkt_en)
+		load_pkt_next = 1;
+	if (last_reg & valid_reg)
+		load_pkt_next = 0;
+
+	if (check_pkt_en && check_pkt == CHECK_THROUGH)
+		filter_pkt_next = 1;
+	if (last_reg & valid_reg)
+		filter_pkt_next = 0;
+end
+
+always @ (posedge axis_aclk)
+	if (!axis_resetn) begin
+		last_reg          <= 0;
+		valid_reg         <= 0;
+		load_pkt          <= 0;
+		filter_pkt        <= 0;
+		valid_udp_traffic <= 0;
+	end else begin
+		last_reg   <= save_axis_tlast;
+		valid_reg  <= save_axis_tvalid;
+		load_pkt   <= load_pkt_next;
+		filter_pkt <= filter_pkt_next;
+		if (p0_lookup_traffic_en[8] & p0_axis_tvalid)
+			valid_udp_traffic <= 1;
+		if (p0_axis_tlast & p0_axis_tvalid)
+			valid_udp_traffic <= 0;
+	end
+
+wire sw_pkt_ready = save_axis_tready & load_pkt_next;
+wire sw_pkt_ready_checked = save_axis_tready & filter_pkt_next;
+wire s0_ready;
+
 assign in_key   = key_input;
 assign in_valid  = !empty_ivalid_fifo && in_ready;
 /***************************************************************
- * lookup to Memory Device
+ * Pipeline
  ***************************************************************/
+reg [C_S_AXIS_DATA_WIDTH - 1:0]         p0_s_axis_tdata , p1_s_axis_tdata ;
+reg [((C_S_AXIS_DATA_WIDTH / 8)) - 1:0] p0_s_axis_tkeep , p1_s_axis_tkeep ;
+reg [C_S_AXIS_TUSER_WIDTH-1:0]          p0_s_axis_tuser , p1_s_axis_tuser ;
+reg                                     p0_s_axis_tvalid, p1_s_axis_tvalid;
+reg                                     p0_s_axis_tlast , p1_s_axis_tlast ;
+reg [C_S_AXIS_DATA_WIDTH - 1:0]         p1_s_axis_tdata , p2_s_axis_tdata ;
+reg [((C_S_AXIS_DATA_WIDTH / 8)) - 1:0] p1_s_axis_tkeep , p2_s_axis_tkeep ;
+reg [C_S_AXIS_TUSER_WIDTH-1:0]          p1_s_axis_tuser , p2_s_axis_tuser ;
+reg                                     p1_s_axis_tvalid, p2_s_axis_tvalid;
+reg                                     p1_s_axis_tlast , p2_s_axis_tlast ;
+reg [1:0] p0_status, p1_status, p2_status;
+
+always @ (posedge axis_aclk) begin
+	if (!axis_resetn) begin
+		p0_s_axis_tvalid <= 0;
+		p0_s_axis_tlast  <= 0;
+		p0_s_axis_tkeep  <= 0;
+		p0_s_axis_tdata  <= 0;
+		p0_s_axis_tuser  <= 0;
+		p1_s_axis_tvalid <= 0;
+		p1_s_axis_tlast  <= 0;
+		p1_s_axis_tkeep  <= 0;
+		p1_s_axis_tdata  <= 0;
+		p1_s_axis_tuser  <= 0;
+		p2_s_axis_tvalid <= 0;
+		p2_s_axis_tlast  <= 0;
+		p2_s_axis_tkeep  <= 0;
+		p2_s_axis_tdata  <= 0;
+		p2_s_axis_tuser  <= 0;
+		p0_status        <= 0;  
+		p1_status        <= 0;  
+		p2_status        <= 0;
+	end else begin
+		p0_s_axis_tvalid <= s_axis_tvalid;
+		p0_s_axis_tlast  <= s_axis_tlast ;
+		p0_s_axis_tkeep  <= s_axis_tkeep ;
+		p0_s_axis_tdata  <= s_axis_tdata ;
+		p0_s_axis_tuser  <= s_axis_tuser ;
+		p1_s_axis_tvalid <= p0_s_axis_tvalid;
+		p1_s_axis_tlast  <= p0_s_axis_tlast ;
+		p1_s_axis_tkeep  <= p0_s_axis_tkeep ;
+		p1_s_axis_tdata  <= p0_s_axis_tdata ;
+		p1_s_axis_tuser  <= p0_s_axis_tuser ;
+		p2_s_axis_tvalid <= p1_s_axis_tvalid;
+		p2_s_axis_tlast  <= p1_s_axis_tlast ;
+		p2_s_axis_tkeep  <= p1_s_axis_tkeep ;
+		p2_s_axis_tdata  <= p1_s_axis_tdata ;
+		p2_s_axis_tuser  <= p1_s_axis_tuser ;
+		p0_status        <= status;  
+		p1_status        <= p0_status;  
+		p2_status        <= p1_status;
+	end
  
 /***************************************************************
  * FIFO instances; Waiting Lookup!
  ***************************************************************/
-fallthrough_small_fifo #( 
-	.WIDTH    (C_M_AXIS_DATA_WIDTH+C_M_AXIS_TUSER_WIDTH+C_M_AXIS_DATA_WIDTH/8+1),
-	.MAX_DEPTH_BITS(2)
-) input_fifo (
-// Outputs
-	.dout         ({m_axis_tlast, tuser_fifo, m_axis_tkeep, m_axis_tdata}),
-	.full         (),
-	.nearly_full  (in_fifo_nearly_full),
-	.prog_full    (),
-	.empty        (in_fifo_empty),
-	// Inputs
-	.din          ({s_axis_tlast, s_axis_tuser, s_axis_tkeep, s_axis_tdata}),
-	.wr_en        (s_axis_tvalid & ~in_fifo_nearly_full),
-	.rd_en        (in_fifo_rd_en),
-	.reset        (~axis_resetn),
-	.clk          (axis_aclk)
-);
-
 // Nomarl traffic : to network port 1 from switch_interconnect
 axis_data_fifo_0 u_axis_data_fifo0 (
-	.s_axis_aresetn      (!eth_rst[8]),  
-	.s_axis_aclk         (clk156),  
+	.s_axis_aresetn      ( axis_resetn     ),  
+	.s_axis_aclk         ( axis_aclk       ),  
 	
-	.s_axis_tvalid       (out_axis_tvalid),
-	.s_axis_tready       (out_axis_tready),          
-	.s_axis_tdata        (out_axis_tdata), 
-	.s_axis_tkeep        (out_axis_tkeep), 
-	.s_axis_tlast        (out_axis_tlast), 
-	.s_axis_tuser        (out_axis_tuser),          
+	.s_axis_tvalid       ( out_axis_tvalid ),
+	.s_axis_tready       ( out_axis_tready ),          
+	.s_axis_tdata        ( out_axis_tdata  ), 
+	.s_axis_tkeep        ( out_axis_tkeep  ), 
+	.s_axis_tlast        ( out_axis_tlast  ), 
+	.s_axis_tuser        ( out_axis_tuser  ),          
 	
-	.m_axis_tvalid       (m_axis_tx1_tvalid),
-	.m_axis_tready       (m_axis_tx1_tready),
-	.m_axis_tdata        (m_axis_tx1_tdata), 
-	.m_axis_tkeep        (m_axis_tx1_tkeep), 
-	.m_axis_tlast        (m_axis_tx1_tlast), 
-	.m_axis_tuser        (m_axis_tx1_tuser), 
+	.m_axis_tvalid       ( m_axis_tvalid   ),
+	.m_axis_tready       ( m_axis_tready   ),
+	.m_axis_tdata        ( m_axis_tdata    ), 
+	.m_axis_tkeep        ( m_axis_tkeep    ), 
+	.m_axis_tlast        ( m_axis_tlast    ), 
+	.m_axis_tuser        ( m_axis_tuser    ), 
 	.axis_data_count     (), 
 	.axis_wr_data_count  (outbound_wr_dcnt), 
 	.axis_rd_data_count  (outbound_rd_dcnt)  
@@ -269,26 +379,26 @@ axis_data_fifo_0 u_axis_data_fifo0 (
 
 // Lookuped traffic : to switch from network port0
 axis_data_fifo_0 u_axis_data_fifo1 (
-	.s_axis_aresetn      (!eth_rst[9]),  
-	.s_axis_aclk         (clk156),  
+	.s_axis_aresetn      ( axis_resetn ),  
+	.s_axis_aclk         ( axis_aclk   ),  
 	
-	.s_axis_tvalid       (p0_axis_tvalid & udp_traffic_en),
+	.s_axis_tvalid       ( p2_s_axis_tvalid & udp_traffic_en),
 	.s_axis_tready       (),          
-	.s_axis_tdata        (p0_axis_tdata), 
-	.s_axis_tkeep        (p0_axis_tkeep), 
-	.s_axis_tlast        (p0_axis_tlast & udp_traffic_en), 
-	.s_axis_tuser        (1'b0),          
+	.s_axis_tdata        ( p2_s_axis_tdata                 ), 
+	.s_axis_tkeep        ( p2_s_axis_tkeep                 ), 
+	.s_axis_tlast        ( p2_s_axis_tlast & udp_traffic_en), 
+	.s_axis_tuser        ( p2_s_axis_tuser                 ),          
 	
-	.m_axis_tvalid       (save_axis_tvalid),
-	.m_axis_tready       (sw_pkt_ready),
-	.m_axis_tdata        (save_axis_tdata), 
-	.m_axis_tkeep        (save_axis_tkeep), 
-	.m_axis_tlast        (save_axis_tlast), 
-	.m_axis_tuser        (save_axis_tuser), 
+	.m_axis_tvalid       ( save_axis_tvalid                ),
+	.m_axis_tready       ( sw_pkt_ready                    ),
+	.m_axis_tdata        ( save_axis_tdata                 ), 
+	.m_axis_tkeep        ( save_axis_tkeep                 ), 
+	.m_axis_tlast        ( save_axis_tlast                 ), 
+	.m_axis_tuser        ( save_axis_tuser                 ), 
 	
 	.axis_data_count     (), 
-	.axis_wr_data_count  (inbound_wr_dcnt), 
-	.axis_rd_data_count  (inbound_rd_dcnt)  
+	.axis_wr_data_count  ( inbound_wr_dcnt                 ), 
+	.axis_rd_data_count  ( inbound_rd_dcnt                 )  
 );
 
 /***************************************************************
@@ -303,21 +413,21 @@ axis_interconnect_0 u_interconnect_2_1 (
 	// traffic except UDP
 	.S00_AXIS_ACLK        ( axis_aclk   ),  
 	.S00_AXIS_ARESETN     ( axis_resetn ), 
-	.S00_AXIS_TVALID      ( p0_axis_tvalid & !udp_traffic_en), // todo   
+	.S00_AXIS_TVALID      ( p2_s_axis_tvalid & !udp_traffic_en), // todo   
 	.S00_AXIS_TREADY      ( s0_ready),   
-	.S00_AXIS_TDATA       ( p0_axis_tdata),   
-	.S00_AXIS_TKEEP       ( p0_axis_tkeep),   
-	.S00_AXIS_TLAST       ( p0_axis_tlast & !udp_traffic_en),   
-	.S00_AXIS_TUSER       ( 8'd0),  // 8bit 
+	.S00_AXIS_TDATA       ( p2_s_axis_tdata),   
+	.S00_AXIS_TKEEP       ( p2_s_axis_tkeep),   
+	.S00_AXIS_TLAST       ( p2_s_axis_tlast & !udp_traffic_en),   
+	.S00_AXIS_TUSER       ( p2_s_axis_tuser ),  // 8bit 
 
 	// Traffic UDP with lookup into DRAM HashTable
 	.S01_AXIS_ACLK        ( axis_aclk   ),  
 	.S01_AXIS_ARESETN     ( axis_resetn ),
-	.S01_AXIS_TVALID      (save_axis_tvalid & sw_pkt_ready_checked),   
-	.S01_AXIS_TREADY      (save_axis_tready),   
-	.S01_AXIS_TDATA       (save_axis_tdata),   
-	.S01_AXIS_TKEEP       (save_axis_tkeep),   
-	.S01_AXIS_TLAST       (save_axis_tlast & sw_pkt_ready_checked),   
+	.S01_AXIS_TVALID      ( save_axis_tvalid & sw_pkt_ready_checked),   
+	.S01_AXIS_TREADY      ( save_axis_tready),   
+	.S01_AXIS_TDATA       ( save_axis_tdata),   
+	.S01_AXIS_TKEEP       ( save_axis_tkeep),   
+	.S01_AXIS_TLAST       ( save_axis_tlast & sw_pkt_ready_checked),   
 	.S01_AXIS_TUSER       (8'd0),   
 
 	.M00_AXIS_ACLK        ( axis_aclk   ),   
