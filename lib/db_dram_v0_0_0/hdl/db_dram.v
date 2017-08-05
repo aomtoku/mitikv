@@ -46,11 +46,47 @@
  */
 
 module db_dram #(
+	parameter KEY_SIZE = 96,
+	parameter VAL_SIZE = 32,
+	parameter RAM_SIZE = 1024,
+	parameter RAM_ADDR = 22
+	// AXI Registers Data Width
+	parameter C_S_AXI_DATA_WIDTH    = 32,          
+	parameter C_S_AXI_ADDR_WIDTH    = 12,          
+	parameter C_BASEADDR            = 32'h00000000
 )(
 	// Global Ports
 	input axis_aclk,
 	input axis_resetn,
 
+	/* DDRS SDRAM Infra */
+	input  wire                sys_clk_p,
+	input  wire                sys_clk_n,
+	
+	/* DRAM interace */ 
+	inout  [63:0]              ddr3_dq,
+	inout  [ 7:0]              ddr3_dqs_n,
+	inout  [ 7:0]              ddr3_dqs_p,
+	output [15:0]              ddr3_addr,
+	output [ 2:0]              ddr3_ba,
+	output                     ddr3_ras_n,
+	output                     ddr3_cas_n,
+	output                     ddr3_we_n,
+	output                     ddr3_reset_n,
+	output [ 0:0]              ddr3_ck_p,
+	output [ 0:0]              ddr3_ck_n,
+	output [ 0:0]              ddr3_cke,
+	output [ 0:0]              ddr3_cs_n,
+	output [ 7:0]              ddr3_dm,
+	output [ 0:0]              ddr3_odt,
+
+	output wire                init_mem,
+	input  wire [KEY_SIZE-1:0] in_key,
+	input  wire [3:0]          in_flag,
+	input  wire                in_valid,
+	output wire                in_ready,
+	output wire                out_valid,
+	output wire [3:0]          out_flag,
 	// Slave AXI Ports
 	input                                     S_AXI_ACLK,
 	input                                     S_AXI_ARESETN,
@@ -71,6 +107,82 @@ module db_dram #(
 	output     [1 :0]                         S_AXI_BRESP,
 	output                                    S_AXI_BVALID,
 	output                                    S_AXI_AWREADY
+);
+
+
+db_top #(
+	.KEY_SIZE     ( KEY_SIZE ),
+	.VAL_SIZE     ( VAL_SIZE ),
+	.RAM_SIZE     ( RAM_SIZE ),
+	.RAM_ADDR     ( RAM_ADDR )
+) u_db_top (
+	.clk          ( axis_aclk ),
+	.rst          (  ), 
+	.sys_rst      ( !axis_resetn ),
+	/* DDRS SDRAM Infra */
+	.sys_clk_p    ( sys_clk_p ),
+	.sys_clk_n    ( sys_clk_n ),
+	
+	/* DRAM interace */ 
+	.ddr3_dq      ( ddr3_dq      ),
+	.ddr3_dqs_n   ( ddr3_dqs_n   ),
+	.ddr3_dqs_p   ( ddr3_dqs_p   ),
+	.ddr3_addr    ( ddr3_addr    ),
+	.ddr3_ba      ( ddr3_ba      ),
+	.ddr3_ras_n   ( ddr3_ras_n   ),
+	.ddr3_cas_n   ( ddr3_cas_n   ),
+	.ddr3_we_n    ( ddr3_we_n    ),
+	.ddr3_reset_n ( ddr3_reset_n ),
+	.ddr3_ck_p    ( ddr3_ck_p    ),
+	.ddr3_ck_n    ( ddr3_ck_n    ),
+	.ddr3_cke     ( ddr3_cke     ),
+	.ddr3_cs_n    ( ddr3_cs_n    ),
+	.ddr3_dm      ( ddr3_dm      ),
+	.ddr3_odt     ( ddr3_odt     ),
+	/* Network Interface */
+	.init_mem     ( init_mem  ),
+	.in_key       ( in_key    ),
+	.in_flag      ( in_flag   ),
+	.in_valid     ( in_valid  ),
+	.in_ready     ( in_ready  ),
+	.out_valid    ( out_valid ),
+	.out_flag     ( out_flag  )
+);
+
+cpu_regs # (
+	.C_BASE_ADDRESS        ( C_BASE_ADDRESS     ),
+	.C_S_AXI_DATA_WIDTH    ( C_S_AXI_DATA_WIDTH ),
+	.C_S_AXI_ADDR_WIDTH    ( C_S_AXI_ADDR_WIDTH )
+) u_cpu_regs (
+	// General ports
+	.clk                   ( axis_aclk   ),
+	.resetn                ( axis_resetn ),
+	// Global Registers
+	.cpu_resetn_soft       (),
+	.resetn_soft           (),
+	.resetn_sync           (),
+	// Register ports
+
+	// AXI Lite ports
+	.S_AXI_ACLK            ( S_AXI_ACLK    ),
+	.S_AXI_ARESETN         ( S_AXI_ARESETN ),
+	.S_AXI_AWADDR          ( S_AXI_AWADDR  ),
+	.S_AXI_AWVALID         ( S_AXI_AWVALID ),
+	.S_AXI_WDATA           ( S_AXI_WDATA   ),
+	.S_AXI_WSTRB           ( S_AXI_WSTRB   ),
+	.S_AXI_WVALID          ( S_AXI_WVALID  ),
+	.S_AXI_BREADY          ( S_AXI_BREADY  ),
+	.S_AXI_ARADDR          ( S_AXI_ARADDR  ),
+	.S_AXI_ARVALID         ( S_AXI_ARVALID ),
+	.S_AXI_RREADY          ( S_AXI_RREADY  ),
+	.S_AXI_ARREADY         ( S_AXI_ARREADY ),
+	.S_AXI_RDATA           ( S_AXI_RDATA   ),
+	.S_AXI_RRESP           ( S_AXI_RRESP   ),
+	.S_AXI_RVALID          ( S_AXI_RVALID  ),
+	.S_AXI_WREADY          ( S_AXI_WREADY  ),
+	.S_AXI_BRESP           ( S_AXI_BRESP   ),
+	.S_AXI_BVALID          ( S_AXI_BVALID  ),
+	.S_AXI_AWREADY         ( S_AXI_AWREADY )
 );
 
 endmodule
