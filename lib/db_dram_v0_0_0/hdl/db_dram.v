@@ -44,6 +44,8 @@
  *        Database on DRAM
  *
  */
+`define DRAM_SUPPORT
+//`define DPRAM_SUPPORT
 
 module db_dram #(
 	parameter KEY_SIZE = 96,
@@ -59,10 +61,11 @@ module db_dram #(
 	input axis_aclk,
 	input axis_resetn,
 
+`ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	input  wire                sys_clk_p,
 	input  wire                sys_clk_n,
-	
+
 	/* DRAM interace */ 
 	inout  [63:0]              ddr3_dq,
 	inout  [ 7:0]              ddr3_dqs_n,
@@ -79,6 +82,7 @@ module db_dram #(
 	output [ 0:0]              ddr3_cs_n,
 	output [ 7:0]              ddr3_dm,
 	output [ 0:0]              ddr3_odt,
+`endif
 
 	output wire                init_mem,
 	input  wire [KEY_SIZE-1:0] in_key,
@@ -87,6 +91,7 @@ module db_dram #(
 	output wire                in_ready,
 	output wire                out_valid,
 	output wire [3:0]          out_flag,
+
 	// Slave AXI Ports
 	input                                     S_AXI_ACLK,
 	input                                     S_AXI_ARESETN,
@@ -109,6 +114,11 @@ module db_dram #(
 	output                                    S_AXI_AWREADY
 );
 
+// Todo: 
+//    support AXI-mapped DRAM access
+wire [31:0] dram_addr;
+wire [31:0] dram_wdata;
+
 
 db_top #(
 	.KEY_SIZE     ( KEY_SIZE ),
@@ -119,6 +129,8 @@ db_top #(
 	.clk          ( axis_aclk ),
 	.rst          (  ), 
 	.sys_rst      ( !axis_resetn ),
+
+`ifdef DRAM_SUPPORT
 	/* DDRS SDRAM Infra */
 	.sys_clk_p    ( sys_clk_p ),
 	.sys_clk_n    ( sys_clk_n ),
@@ -139,6 +151,7 @@ db_top #(
 	.ddr3_cs_n    ( ddr3_cs_n    ),
 	.ddr3_dm      ( ddr3_dm      ),
 	.ddr3_odt     ( ddr3_odt     ),
+`endif
 	/* Network Interface */
 	.init_mem     ( init_mem  ),
 	.in_key       ( in_key    ),

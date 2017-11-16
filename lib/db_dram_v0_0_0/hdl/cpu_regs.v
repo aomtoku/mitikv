@@ -4,7 +4,7 @@
 //
 //
 //  File:
-//        cpu_register.v
+//        cpu_regs.v
 //
 //  Module:
 //        cpu_regs

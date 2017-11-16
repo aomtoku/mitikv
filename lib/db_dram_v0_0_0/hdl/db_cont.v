@@ -736,6 +736,35 @@ sume_ddr_mig u_sume_ddr_mig (
        //.sys_rst                        (!eth_rst[6])
        .sys_rst                        (!sys_rst)
 );
+`else
+
+dpram_mig_wrapper #(
+	.DPRAM_ADDR_WIDTH   ( 12     ),
+	.DPRAM_DWIDTH       ( 128    ),
+	.DPRAM_TYPE         ( "BRAM" ) // BRAM or LUT
+) u_dpram (
+	.sys_clk               ( clk156     ),
+	.sys_rst               ( eth_rst[7] ),
+
+	.init_calib_complete   ( init_calib_complete ),
+	.app_addr              ( app_addr            ),
+	.app_cmd               ( app_cmd             ),
+	.app_en                ( app_en              ),
+	.app_wdf_data          ( app_wdf_data        ),
+	.app_wdf_end           ( app_wdf_end         ),
+	.app_wdf_wren          ( app_wdf_wren        ),
+	.app_wdf_mask          ( app_wdf_mask        ),
+	.app_rd_data           ( app_rd_data         ),
+	.app_rd_data_end       ( app_rd_data_end     ),
+	.app_rd_data_valid     ( app_rd_data_valid   ),
+	.app_rdy               ( app_rdy             ),
+	.app_wdf_rdy           ( app_wdf_rdy         )
+);
+`endif /* DRAM_SUPPORT */
+
+// ------------------------------------------------------
+//   ILA Core for Debugging
+// ------------------------------------------------------
 
 `ifndef SIMULATION_DEBUG
 reg [29:0] ila_app_addr;
